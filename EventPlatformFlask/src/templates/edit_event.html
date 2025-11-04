@@ -1,0 +1,41 @@
+{% extends 'backable.html' %}
+
+{% block content %}
+<h5 class="card-header">Edit Event</h5>
+<div class="card-body">
+  <div class="card-text">
+    <form method='post' action={{ url_for('update_event') }}>
+      <input type="hidden" name="id" id="id" value="{{ event.id }}">
+       <div class="form-group mb-1">
+        <label for="title" class="form-label">Title</label>
+        <input type="text" name="title" id="title" value="{{ event.title }}" class="form-control">
+      </div>
+      <div class="form-group mb-1">
+        <label for="description" class="form-label">Description</label>
+        <input type="text" name="description" id="description" value="{{ event.description }}"
+        class="form-control">
+      </div>
+      <div class="form-group mb-1">
+        <label for="categories" class="form-label">Categories</label>
+        <select name="categories" id="categories" class="form-select" size="3" multiple>
+          {% for c in categories %}
+            {% if c.id in event.categories | map(attribute='id') %}
+              <option style="width:100%;" value={{ c.id }} selected>{{ c.name }}</option>
+            {% else %}
+              <option style="width:100%;" value={{ c.id }}>{{ c.name }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+        </div>
+      <br/>
+      <input type="submit" value="Update" class="btn btn-primary">
+    </form>
+  </div>
+</div>
+<div class="card-header">Manage Event</div>
+<div class="card-body">
+<a href="{{ url_for('manage_event', id=event.id) }}">
+  <input type="submit" value="Manage" class="btn btn-secondary">
+</a>
+</div>
+{% endblock %}

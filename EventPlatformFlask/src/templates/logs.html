@@ -1,0 +1,27 @@
+{% extends 'backable.html' %}
+
+{% block content %}
+<h5 class="card-header">Logs:</h5>
+<div class="card-body">
+  <div style="overflow: scroll; height: 222px;"> 
+    <table id="eventsTbl" class="table table-striped table-bordered table-hover table-sm table-responsive" cellspacing="0" width="100%">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Person</th>
+          <th>Event</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in logs %}
+        <tr>
+          <td>{{ format_timestamp(l.timestamp) }} </td>
+          <td>{{ l.user.name if l.user else '' }}</td>
+          <td>{{ l.event.title }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends 'backable.html' %}
+
+{% block content %}
+<h5 class="card-header">Manage Event</h5>
+
+<div class="card-header">Attendees:</div>
+<div class="card-body">
+  <div style="overflow: scroll; height: 222px;"> 
+    <table id="attendeesTbl" class="table table-striped table-bordered table-hover table-sm table-responsive" cellspacing="0" width="100%">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Surname</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in event.attendants %}
+        <tr>
+          <td>{{ u.name }}</td>
+          <td>{{ u.surname }}</td>
+          <td>
+            <a href="{{ url_for('promote_manager', id=u.id, e=event.id) }}"><input type="submit" value="Promote" class="btn btn-secondary"></a>
+            <a href="{{ url_for('remove_attendee', id=u.id, e=event.id) }}"><input type="submit" value="Remove" class="btn btn-secondary"></a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card-header">Managers:</div>
+<div class="card-body">
+  <div style="overflow: scroll; height: 222px;"> 
+    <table id="managersTbl" class="table table-striped table-bordered table-hover table-sm table-responsive" cellspacing="0" width="100%">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Surname</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in event.managedBy %}
+        <tr>
+          <td>{{ u.name }}</td>
+          <td>{{ u.surname }}</td>
+          <td>
+            <a href="{{ url_for('demote_manager', id=u.id, e=event.id) }}"><input type="submit"
+            value="Demote" class="btn btn-secondary"></a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card-header">Requests:</div>
+<div class="card-body">
+  <div style="overflow: scroll; height: 222px;"> 
+    <table id="requestsTbl" class="table table-striped table-bordered table-hover table-sm table-responsive" cellspacing="0" width="100%">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Surname</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in event.requesters %}
+        <tr>
+          <td>{{ u.name }}</td>
+          <td>{{ u.surname }}</td>
+          <td>
+            <a href="{{ url_for('accept_request', id=u.id, e=event.id) }}"><input type="submit"
+            value="Accept" class="btn btn-secondary"></a>
+            <a href="{{ url_for('reject_request', id=u.id, e=event.id) }}"><input type="submit" value="Reject" class="btn btn-secondary"></a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+{% endblock %}

@@ -1,0 +1,125 @@
+{% macro render_children_purposes(parent, current, dpurposes) %}
+<!-- Purpose: {{ current }} -->
+<div class="accordion mt-2" id="subPurposeAccordion{{ parent }}">
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="heading{{current}}Purpose">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{current}}Purpose" aria-expanded="true" aria-controls="collapse{{current}}Purpose">
+                {{ current }} Purpose
+            </button>
+        </h2>
+        <div id="collapse{{ current }}Purpose" class="accordion-collapse" aria-labelledby="heading{{ current }}Purpose" data-bs-parent="#subPurposeAccordion{{ parent }}">
+            <div class="accordion-body">
+                {% for (class_name,property_name) in dpurposes['data'] %}
+                <div class="mb-3">
+                    <label class="toggle-switch">
+                        <input type="checkbox" onchange="handleToggle(this, '{{ current }}', '{{ class_name }}', '{{ property_name }}')"
+                        {% if consents  | selectattr('purpose.name', 'equalto', current) 
+                                        | selectattr('classname', 'equalto', class_name) 
+                                        | selectattr('propertyname', 'equalto', property_name) 
+                                        | list %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                    <span>We use {{ property_name }} of {{ class_name }} for the purpose of {{ current }}{% if 'constraintDesc' in dpurposes.keys() %} if {{ dpurposes['constraintDesc'] }}{% endif %}.</span>
+                </div>
+                {% endfor %}
+
+                {% for child_purpose in dpurposes['children'] %}
+                {{ render_children_purposes(current, child_purpose, dpurposes['children'][child_purpose]) }}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Notice</title>
+    
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/consent.css">
+    <script>
+        function handleToggle(checkbox, purpose, class_name, property_name) {
+            const url = checkbox.checked 
+                ? `/grant_consent` 
+                : `/revoke_consent`;
+
+            const methodType = checkbox.checked ? 'POST' : 'DELETE';
+
+            const requestBody = {
+                purpose: purpose,
+                class_name: class_name,
+                property_name: property_name
+            };
+            
+            fetch(url, {
+                method: methodType,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(requestBody)
+            }).then(response => {
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    console.error('Failed to update consent');
+                }
+            }).catch(error => {
+                console.error('Error:', error);
+            });
+        }
+    </script>
+</head>
+
+<body>
+    <div class="container">
+        <div class="table-container">
+            <h1>Privacy Notice</h1>
+
+            <a href="/" class="btn-back">Back to Main Page</a>
+
+            <div class="accordion mt-3" id="purposeAccordion">
+                {% for dp in dpurposes.keys() %}
+                <!-- Purpose: {{ dp }} -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading{{dp}}Purpose">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{dp}}Purpose" aria-expanded="true" aria-controls="collapse{{dp}}Purpose">
+                            {{ dp }} Purpose
+                        </button>
+                    </h2>
+                    <div id="collapse{{ dp }}Purpose" class="accordion-collapse" aria-labelledby="heading{{ dp }}Purpose" data-bs-parent="#purposeAccordion">
+                        <div class="accordion-body">
+                            {% for (class_name,property_name) in dpurposes[dp]['data'] %}
+                            <div class="mb-3">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" onchange="handleToggle(this, '{{ dp }}', '{{ class_name }}', '{{ property_name }}')" 
+                                    {% if consents  | selectattr('purpose.name', 'equalto', dp) 
+                                                    | selectattr('classname', 'equalto', class_name) 
+                                                    | selectattr('propertyname', 'equalto', property_name) 
+                                                    | list %}checked{% endif %}>
+                                    <span class="slider"></span>
+                                </label>
+                                <span>We use {{ property_name }} of {{ class_name }} for the purpose of {{ dp }}{% if 'constraintDesc' in dpurposes[dp].keys() %} if {{ dpurposes[dp]['constraintDesc'] }}{% endif %}.</span>
+                            </div>
+                            {% endfor %}
+    
+                            {% for child_purpose in dpurposes[dp]['children'] %}
+                            {{ render_children_purposes(dp, child_purpose, dpurposes[dp]['children'][child_purpose]) }}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script type="text/javascript" src="/static/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
