@@ -1,0 +1,107 @@
+{% macro render_sub_purposes(parent_purpose, sub_purpose_hierarchy, hierarchymodel) %}
+    <div class="accordion mt-2" id="subPurposeAccordion{{ parent_purpose }}">
+        {% for sub_purpose in sub_purpose_hierarchy %}
+        <div class="accordion-item">
+            <h3 class="accordion-header" id="heading{{ sub_purpose.name }}SubPurpose">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ sub_purpose.name }}SubPurpose" aria-expanded="false" aria-controls="collapse{{ sub_purpose.name }}SubPurpose">
+                    {{ sub_purpose.name }} Sub-Purpose
+                </button>
+            </h3>
+            <div id="collapse{{ sub_purpose.name }}SubPurpose" class="accordion-collapse" aria-labelledby="heading{{ sub_purpose.name }}SubPurpose" data-bs-parent="#subPurposeAccordion{{ parent_purpose }}">
+                <div class="accordion-body">
+                    {% for a, r, d, c in model[sub_purpose] %}
+                    {% for aa in a %}
+                    <div class="mb-3">
+                        <label class="toggle-switch">
+                            <input type="checkbox" onchange="handleToggle(this, {{ sub_purpose.id }}, '{{ r }}', '{{ aa }}')" {% if c %}checked{% endif %}>
+                            <span class="slider"></span>
+                        </label>
+                        <span>We collect {{ aa }} of {{ r }} for the sub-purpose of {{ sub_purpose.name }}{% if d != 'true' %} if {{ d }}{% endif %}.</span>
+                    </div>
+                    {% endfor %}
+
+                    {% if hierarchymodel.get(sub_purpose.name) %}
+                        {{ render_sub_purposes(sub_purpose.name, hierarchymodel[sub_purpose.name], hierarchymodel) }}
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% endmacro %}
+{% extends "template.html" %}
+{% block main %}
+<div class="container">
+    <div class="table-container">
+        <h1>Privacy Notice</h1>
+
+        <a href="/" class="btn-back">Back to Main Page</a>
+
+        <div class="accordion mt-3" id="purposeAccordion">
+            {% for p in model.keys() %}
+            {% if p.name in toplevel %}
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="heading{{ p.name }}Purpose">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ p.name }}Purpose" aria-expanded="true" aria-controls="collapse{{ p.name }}Purpose">
+                        {{ p.name }} Purposes
+                    </button>
+                </h2>
+                <div id="collapse{{ p.name }}Purpose" class="accordion-collapse" aria-labelledby="heading{{ p.name }}Purpose" data-bs-parent="#purposeAccordion">
+                    <div class="accordion-body">
+                        {% for a, r, d, c in model[p] %}
+                        {% for aa in a %}
+                        <div class="mb-3">
+                            <label class="toggle-switch">
+                                <input type="checkbox" onchange="handleToggle(this, {{ p.id }}, '{{ r }}', '{{ aa }}')" {% if c %}checked{% endif %}>
+                                <span class="slider"></span>
+                            </label>
+                            <span>We collect {{ aa }} of {{ r }} for the purpose of {{ p.name }}{% if d != 'true' %} if {{ d }}{% endif %}.</span>
+                        </div>
+                        {% endfor %}
+
+                        {% if hierarchymodel.get(p.name) %}
+                            {{ render_sub_purposes(p.name, hierarchymodel[p.name], hierarchymodel) }}
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+<link rel="stylesheet" href="/static/css/consent.css">
+<script>
+    function handleToggle(checkbox, purposeId, personaldata, classdata) {
+        const url = checkbox.checked 
+            ? `/add_consent/${purposeId}` 
+            : `/remove_consent/${purposeId}`;
+
+        const methodType = checkbox.checked ? 'POST' : 'DELETE';
+
+        const requestBody = {
+            personalData: personaldata,
+            classData: classdata
+        };
+        
+        fetch(url, {
+            method: methodType,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(requestBody)
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                console.error('Failed to update consent');
+            }
+        }).catch(error => {
+            console.error('Error:', error);
+        });
+    }
+</script>
+{% endblock %}
