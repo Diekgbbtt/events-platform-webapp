@@ -1,1 +1,48 @@
 // TODO
+
+entity Role;
+entity Category;
+entity Event;
+
+// hierarchy of roles with inherited permissions, see
+// PREMIUMUSER has all permissions of REGULARUSER 
+// EVENTOWNER has all permissions of EVENTMANAGER 
+
+entity EventsContainer;
+entity CategoriesContainer;
+entity AdsContainer;
+
+
+entity Person in Role { 
+id: Long ,
+active: Bool ,
+username: String ,
+name: String,
+surname: String,
+gender: String,
+mail: String,
+events: Set<Event>,
+attends: Set<Event>,
+manages: Set<Event>,
+requests: Set<Event>
+};
+
+// entity Event in Category {
+// id: Long ,
+// title: String,
+// description: String,
+// person_id : Long
+// };
+
+
+
+
+
+
+****************** EXAMPLES **********************************
+
+// several actions in a single definition
+action addThought , voteThought , deleteThought appliesTo {
+principal: Person ,
+resource: Thought
+};

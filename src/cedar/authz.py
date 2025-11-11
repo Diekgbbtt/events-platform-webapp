@@ -1,13 +1,40 @@
+import datetime
 from enum import Enum
 import cedarpy
 from typing import Any, Callable, TypeAlias, TypeVar
+
+from sqlalchemy import null
+from model import db, REGULARUSER, PREMIUMUSER, MODERATOR, ADMIN
+
+
+ROLE_ORDER: tuple[str, ...] = (REGULARUSER, PREMIUMUSER, MODERATOR, ADMIN)
+
+
+def _build_role_entities() -> list[dict[str, Any]]:
+    """
+    Emit the linear role hierarchy:
+    REGULARUSER <- PREMIUMUSER
+    PREMIUMUSER <- MODERATOR
+    PREMIUMUSER <- ADMIN
+    """
+    entities: list[dict[str, Any]] = []
+    for _, role in enumerate(ROLE_ORDER):
+        parents = []
+        if role == PREMIUMUSER:
+            parents.append({"type": "Role", "id": REGULARUSER})
+        elif role in (MODERATOR, ADMIN):
+            parents.append({"type": "Role", "id": PREMIUMUSER})
+        entities.append({"uid": {"type": "Role", "id": role}, "attrs": {}, "parents": parents})
+    return entities
 
 
 class SecurityException(Exception):
     """Exception raised when an action is not authorized by security policy"""
 
-    def __init__(self, msg):
+    def __init__(self, msg, page, params=None):
         self.msg = msg
+        self.page = page
+        self.params = params or {}
 
 
 class EntitySerializer:
@@ -23,7 +50,11 @@ class EntitySerializer:
         Format: `EntityType::"object_id"`
         Example: `User::"123"` or `Document::"456"`
         """
-        return ...    # TODO
+        identifier = getattr(subject, "name", getattr(subject, "id", None))
+        if identifier is None:
+            raise ValueError(f"Cannot generate identifier for {subject}")
+
+        return f"{subject.__class__.__name__}::\"{str(identifier).strip()}\""
 
     def entity_json(self, subject: object) -> dict[str, Any]:
         """
@@ -31,15 +62,81 @@ class EntitySerializer:
 
         Returns complete entity with UID, attributes, and parents
         """
-        cedar_type = ...    # TODO
-        object_id = ...     # TODO
-        attributes = {...}  # TODO
-        parents = [...]     # TODO
+        attributes = {}
+        data = subject.__dict__
+
+        for k, v in data.items():
+            if k in ["id", "name"]:
+                continue
+
+            serialized_value = self._serialize_attribute_value(v)
+            if serialized_value is not None:
+                attributes[k] = serialized_value
+        cedar_type = subject.__class__.__name__
+        object_id = getattr(subject, "name", None) or getattr(subject, "id", None)
+
+        parents: list[dict[str, Any]] = []
+        if cedar_type == "Person":
+            roles = getattr(subject, "roles", None) or []
+            seen_roles: set[str] = set()
+            append_parent = parents.append
+            for role in roles:
+                name = getattr(role, "name", None)
+                if not name:
+                    continue
+                normalized = str(name).strip()
+                if not normalized or normalized in seen_roles:
+                    continue
+                seen_roles.add(normalized)
+                append_parent({"type": "Role", "name": normalized})
+        ## events do not have attribute for the category they are in but category does
+        # TODO add more relationships if necessary
+        # elif cedar_type == "Event":
+        #     categories = getattr(subject, "categories", None) or []
+        #     seen_categories: set[str] = set()
+        #     append_parent = parents.append
+        #     for category in categories:
+        #         name = getattr(category, "name", None)
+        #         if not name:
+        #             continue
+        #         normalized = str(name).strip()
+        #         if not normalized or normalized in seen_categories:
+        #             continue
+        #         seen_categories.add(normalized)
+        #         append_parent({"type": "Category", "name": normalized})
 
         return {
             "uid": {"type": cedar_type, "id": object_id},
             "attrs": attributes,
             "parents": parents,
+        }
+
+    def _serialize_attribute_value(self, value: Any) -> Any | None:
+        if isinstance(value, (int, str, bool, list, set, datetime.datetime)):
+            return value
+
+        if isinstance(value, dict):
+            nested: dict[str, Any] = {}
+            for key, nested_value in value.items():
+                converted = self._serialize_attribute_value(nested_value)
+                if converted is not None:
+                    nested[key] = converted
+            return nested if nested else None
+
+        if isinstance(value, db.Model):
+            return self._entity_pointer(value)
+
+        return None
+
+    def _entity_pointer(self, subject: object) -> dict[str, Any]:
+        identifier = getattr(subject, "name", getattr(subject, "id", None))
+        if identifier is None:
+            identifier = str(subject)
+        return {
+            "__entity": {
+                "type": subject.__class__.__name__,
+                "id": identifier,
+            }
         }
 
 
@@ -66,6 +163,7 @@ class CedarClient:
         self.serializer = serializer
         self.schema = schema
         self.verbose = verbose
+        self._static_entities = _build_role_entities()
 
     def is_authorized(
         self,
@@ -109,8 +207,12 @@ class CedarClient:
         # Serialize all entities if they are not dicts already
         entities_json = []
         for entity in entities:
-            if not isinstance(entity, dict):
+            if isinstance(entity, dict):
+                entities_json.append(entity)
+            else:
                 entities_json.append(self.serializer.entity_json(entity))
+        # always add roles entities with hierarchy
+        entities_json.extend(self._static_entities)
 
         # Build and send authorization request
         request = {

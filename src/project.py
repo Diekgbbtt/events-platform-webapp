@@ -23,7 +23,6 @@ PURPOSES = [
 # Setup Cedar
 serializer = EntitySerializer()
 # TODO
-
 POLICY_PATH = os.path.join(os.path.dirname(__file__), "cedar", "main.cedar")
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "cedar", "main.cedarschema")
 
@@ -207,18 +206,28 @@ def events():
     return {'events': events, 'categories': categories}
     
 def create_event():
-    event = Event()
-    event.owner = current_user
-    event.managedBy.append(current_user)
-    event.attendants.append(current_user)
-    event.title = request.form["title"]
-    event.description = request.form["description"]
-    categories = request.form.getlist("categories")
-    for cid in categories:
-        c = Category.query.get(cid)
-        event.categories.append(c)
-    db.session.add(event)
-    db.session.commit()
+    try:
+        if current_user.is_authenticated:
+            raise SecurityException (
+                msg=f"Analyze event not allowed for not authenticated users", page='sec_error.html'
+            )
+        cedar.assert_allowed(principal=current_user, action="addEvent", resource='EventsContainer::"Global"')
+        event = Event()
+        event.owner = current_user
+        event.managedBy.append(current_user)
+        event.attendants.append(current_user)
+        event.title = request.form["title"]
+        event.description = request.form["description"]
+        categories = request.form.getlist("categories")
+        for cid in categories:
+            c = Category.query.get(cid)
+            event.categories.append(c)
+        db.session.add(event)
+        db.session.commit()
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
+
 
 def view_event(id):
     event = Event.query.get(id)
@@ -362,17 +371,25 @@ def send_mass_advertisement(id):
         send_advertisement_to_user(subscriber) 
 
 def analyze(id):
-    event = EventDTO.copy(Event.query.get(id))
-    gender_counts = {"male": 0, "female": 0, "unknown": 0}
-    for p in event.attendants:
-        gender = p.gender if p.gender in gender_counts else "unknown"
-        gender_counts[gender] += 1    
-    return {
-        'event': event,
-        'male': gender_counts['male'],
-        'female': gender_counts['female'],
-        'unknown': gender_counts['unknown']
-    }
+    try:
+        if not current_user.is_authenticated:
+            raise SecurityException (
+            msg="Analyze event not allowed for not authenticated users", page='sec_error.html'
+            )
+        cedar.assert_allowed(principal=current_user, action="analyze", resource='Event::"Global"')
+        event = EventDTO.copy(Event.query.get(id))
+        gender_counts = {"male": 0, "female": 0, "unknown": 0}
+        for p in event.attendants:
+            gender = p.gender if p.gender in gender_counts else "unknown"
+            gender_counts[gender] += 1    
+        return {
+            'event': event,
+            'male': gender_counts['male'],
+            'female': gender_counts['female'],
+            'unknown': gender_counts['unknown']
+        }
+    except SecurityException as se:
+        raise se
 
 def logs():
     logs = LogDTO.copies(Log.query.all())
