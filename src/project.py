@@ -107,10 +107,12 @@ Helper function to safely get attribute with Cedar authorization
 If not authorized, returns RESTRICTED instead of the actual value
 """
 def get_authorized_attribute(_self, _property, _caller, _action, _self_resource, context={}, entities=None):
-    if check_cedar_permission(_caller, _action, _self_resource, context=context, entities=entities):
-        return getattr(_self, _property)
-    else:
-        return RESTRICTED
+    value = getattr(_self, _property)
+    if current_user.is_authenticated and check_cedar_permission(_caller, _action, _self_resource, context=context, entities=entities):
+        return value
+    if isinstance(value, list):
+        return []
+    return RESTRICTED
 
 """
 Use in case you need to initialize something
@@ -200,10 +202,33 @@ def unsubscribe(id):
         current_user.subscriptions.remove(category)
         db.session.commit()
         
+def _serialize_event(event):
+    requesters = get_authorized_attribute(event, "requesters", current_user, "readEventRequesters", event)
+    if isinstance(requesters, list) and requesters is not RESTRICTED:
+        requesters = PersonDTO._clones(requesters)
+
+    logs = get_authorized_attribute(event, "logs", current_user, "readEventLogs", event)
+    if isinstance(logs, list) and logs is not RESTRICTED:
+        logs = LogDTO._clones(logs)
+
+    return EventDTO(
+        id=event.id,
+        title=event.title,
+        description=event.description,
+        owner=event.owner,
+        categories=CategoryDTO._clones(event.categories),
+        managedBy=PersonDTO._clones(event.managedBy),
+        attendants=PersonDTO._clones(event.attendants),
+        requesters=requesters,
+        logs=logs,
+    )
+
+
 def events():   
-    events = EventDTO.copies(Event.query.all())
+    events = Event.query.all()
+    events_dto = [_serialize_event(e) for e in events]
     categories = CategoryDTO.copies(Category.query.all())
-    return {'events': events, 'categories': categories}
+    return {'events': events_dto, 'categories': categories}
     
 def create_event():
     try:
@@ -231,7 +256,7 @@ def create_event():
 
 def view_event(id):
     event = Event.query.get(id)
-    event_dto = EventDTO.copy(event)
+    event_dto = _serialize_event(event)
     # Create a log entry for viewing the event
     log = Log()
     log.timestamp = int(time.time())
