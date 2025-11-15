@@ -157,9 +157,12 @@ class EntitySerializer:
         if identifier is None:
             identifier = str(subject)        
         return {
+            "__entity" :
+            {
                 "type": subject.__class__.__name__,
                 "id": str(identifier),
             }
+        } 
 
 
 class CedarClient:

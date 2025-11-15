@@ -1,20 +1,10 @@
 // TODO
 
-entity Role{
-    id: String,
-};
-entity Category{
-    id: Long
-};
-entity Log{
-    id: Long
-};
-entity Consent{
-    id: Long
-};
-entity Purpose{
-    id: Long
-};
+entity Role;
+entity Category;
+entity Log;
+entity Consent;
+entity Purpose;
 
 // hierarchy of roles with inherited permissions, see
 // PREMIUMUSER has all permissions of REGULARUSER 
@@ -32,14 +22,7 @@ username: String ,
 name: String,
 surname: String,
 gender: String,
-email: String,
-events: Set<Event>,
-manages: Set<Event>,
-attends: Set<Event>,
 requests: Set<Event>,
-subscriptions: Set<Category>,
-moderates: Set<Event>,
-consents: Set<Consent>,
 logs: Set<Log>
 };
 
@@ -49,8 +32,6 @@ title: String,
 description: String,
 person_id: Long,
 owner: Person,
-categories: Set<Category>,
-managedBy: Set<Person>,
 attendants: Set<Person>,
 requesters: Set<Person>,
 logs: Set<Log>

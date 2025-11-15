@@ -213,7 +213,7 @@ def unsubscribe(id):
         db.session.commit()
         
 def _serialize_event(event):
-    requesters = get_authorized_attribute(_self=event, _property="requesters", _caller=current_user, _action='Action::"readEventRequesters"', _self_resource=event)
+    requesters = get_authorized_attribute(_self=event, _property="requesters", _caller=current_user, _action="readEventRequesters", _self_resource=event)
     if isinstance(requesters, list) and requesters is not RESTRICTED:
         requesters = PersonDTO._clones(requesters)
 
