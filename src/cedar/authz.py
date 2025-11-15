@@ -69,7 +69,7 @@ class EntitySerializer:
 
         for attr in mapper.column_attrs + mapper.relationships:
             k = attr.key
-            if k in ["_sa_instance_state", "password", "roles", "logs", "requests", "attendants", "managedBy", "owner"]:
+            if k in ["id", "_sa_instance_state", "password", "roles", "logs", "requests", "attendants", "managedBy", "owner"]:
                 continue
             v = getattr(subject, k)
             
@@ -157,8 +157,10 @@ class EntitySerializer:
         if identifier is None:
             identifier = str(subject)        
         return {
+            "__entity" : {
                 "type": subject.__class__.__name__,
-                "id": str(identifier)
+                "id": str(identifier).strip()
+            }
         } 
 
 
