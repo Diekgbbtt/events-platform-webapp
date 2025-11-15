@@ -10,7 +10,6 @@ entity EventsContainer;
 entity CategoriesContainer;
 entity AdsContainer;
 
-
 entity Person in Role;
 
 entity Event;

@@ -58,6 +58,15 @@ class EntitySerializer:
 
         return f"{subject.__class__.__name__}::\"{str(identifier).strip()}\""
 
+
+    def action_reference(self, action: str) -> str:
+        """
+        Convert action string to Cedar action reference
+
+        Ensures action has proper `Action::` prefix for Cedar
+        """
+        return f'Action::"{action}"' if not action.startswith("Action::") else action
+
     def entity_json(self, subject: object) -> dict[str, Any]:
         """
         Convert object to full Cedar entity JSON for the entity store
@@ -234,15 +243,14 @@ class CedarClient:
             if isinstance(entity, dict):
                 entities_json.append(entity)
             else:
-                ent_json = self.serializer.entity_json(entity)
-                entities_json.append(ent_json)
+                entities_json.append(self.serializer.entity_json(entity))
         # always add roles entities with hierarchy
         entities_json.extend(self._static_entities)
 
         # Build and send authorization request
         request = {
             "principal": principal_uid,
-            "action": action,
+            "action": self.serializer.action_reference(action),
             "resource": resource_uid,
             "context": context,
         }
