@@ -33,7 +33,7 @@ with open(POLICY_PATH, "r", encoding="utf-8") as policy_file:
             schema = schema_file.read()
     except FileNotFoundError:
         schema = None
-    cedar = CedarClient(policies, serializer, schema, verbose = True)
+    cedar = CedarClient(policies, serializer, None, verbose = True)
 
 """
 Define your privacy input here. 
@@ -116,7 +116,7 @@ def get_authorized_attribute(_self, _property, _caller, _action, _self_resource,
             return []
         for v in value:
             # if check_cedar_permission(_caller, _action, _self_resource, context={"requester" : {"id" : v.id}}, entities=entities):
-            if current_user.id == v.id or check_cedar_permission(_caller, _action, _self_resource, context={}, entities=entities):
+            if check_cedar_permission(_caller, _action, _self_resource, context={"requesterusr" : v.username.strip()}, entities=entities):
                authorized_list.append(v)
         return authorized_list
 
@@ -213,10 +213,17 @@ def unsubscribe(id):
         db.session.commit()
         
 def _serialize_event(event):
-    requesters = get_authorized_attribute(_self=event, _property="requesters", _caller=current_user, _action="readEventRequesters", _self_resource=event)
-    if isinstance(requesters, list) and requesters is not RESTRICTED:
-        requesters = PersonDTO._clones(requesters)
+    accessible_requests = []
+    
+    if current_user.is_authenticated:
+        if event.owner.id == current_user.id or any(current_user.id == manager.id for manager in event.managedBy) :
+            accessible_requests = event.requesters
+        else:
+            for r in event.requesters:
+                if check_cedar_permission(_caller=current_user, _action="readEventRequesters", _resource=event, context={"requesterusr" : r.username.strip()}):
+                    accessible_requests.append(r)
 
+    
     # logs = get_authorized_attribute(event, "logs", current_user, "readEventLogs", event)
     # if isinstance(logs, list) and logs is not RESTRICTED:
     #     logs = LogDTO._clones(logs)
@@ -229,7 +236,7 @@ def _serialize_event(event):
         categories=CategoryDTO._clones(event.categories),
         managedBy=PersonDTO._clones(event.managedBy),
         attendants=PersonDTO._clones(event.attendants),
-        requesters=requesters,
+        requesters=PersonDTO._clones(accessible_requests),
         logs=[],
     )
 
@@ -241,11 +248,12 @@ def events():
     
 def create_event():
     try:
-        if current_user.is_authenticated:
+        if not current_user.is_authenticated:
             raise SecurityException (
-                msg=f"Analyze event not allowed for not authenticated users", page='sec_error.html'
+                msg=f"create event not allowed for not authenticated users", page='sec_error.html'
             )
-        cedar.assert_allowed(principal=current_user, action="addEvent", resource='EventsContainer::"Global"')
+        current_user_events = Person.query.get(current_user.id).events
+        cedar.assert_allowed(principal=current_user, action="addEvent", resource='EventsContainer::"Global"', context={"userEvents" : len(current_user_events)})
         event = Event()
         event.owner = current_user
         event.managedBy.append(current_user)

@@ -8,11 +8,37 @@ entity CategoriesContainer;
 entity AdsContainer;
 entity Role;
 
-entity Person in Role;
+entity Person in Role {
+    active: Bool,
+    gender: String,
+    username: String,
+    name: String,
+    surname: String,
+};
 
-entity Event;
+entity Event {
+    title: String,
+    description: String,
+    person_id: Long,
+    requesters: Set<Person>
+};
 
-action readEventRequesters, addEvent, analyze appliesTo {
+action readEventRequesters appliesTo {
+    principal: Person,
+    resource: Person,
+    context: {
+        requesterusr: String
+    }
+};
+
+action addEvent appliesTo {
+    principal: Person,
+    resource: EventsContainer
+};
+
+action analyze appliesTo {
     principal: Person,
     resource: Event
-}
+};
+
+

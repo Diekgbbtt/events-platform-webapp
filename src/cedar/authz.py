@@ -78,7 +78,7 @@ class EntitySerializer:
 
         for attr in mapper.column_attrs + mapper.relationships:
             k = attr.key
-            if k in ["id", "_sa_instance_state", "password", "roles", "logs", "requests", "attendants", "managedBy", "owner"]:
+            if k in ["id", "_sa_instance_state", "password", "roles", "logs"]:
                 continue
             v = getattr(subject, k)
             
@@ -274,11 +274,11 @@ class CedarClient:
         result = self.is_authorized(principal, action, resource, context, entities)
         if result.decision == cedarpy.Decision.Deny:
             raise SecurityException(
-                f"Action '{action}' not allowed for {self.serializer.entity_reference(principal)} on {self.serializer.entity_reference(resource)}", page='sec_error.html'
+                f"Action '{action}' not allowed for {principal if isinstance(principal, str) else self.serializer.entity_reference(principal)} on {resource if isinstance(resource, str) else self.serializer.entity_reference(resource)}", page='sec_error.html'
             )
         elif result.decision == cedarpy.Decision.NoDecision:
             raise SecurityException(
-                f"Failed to decide: action '{action}' for {self.serializer.entity_reference(principal)} on {self.serializer.entity_reference(resource)}\n{result.diagnostics.errors}", page='sec_error.html'
+                f"Failed to decide: action '{action}' for {principal if isinstance(principal, str) else self.serializer.entity_reference(principal)} on {resource if isinstance(resource, str) else self.serializer.entity_reference(resource)}\n{result.diagnostics.errors}", page='sec_error.html'
             )
 
 
