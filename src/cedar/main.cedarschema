@@ -14,3 +14,8 @@ entity AdsContainer;
 entity Person in Role;
 
 entity Event;
+
+action readEventRequesters, addEvent, analyze appliesTo {
+    principal: Person,
+    resource: Event
+}
