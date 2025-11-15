@@ -1,6 +1,7 @@
 
 
 entity Role;
+
 entity Category;
 entity Log;
 entity Consent;
@@ -11,9 +12,9 @@ entity CategoriesContainer;
 entity AdsContainer;
 
 
-entity Person in Role { 
-id: Long ,
-active: Bool ,
+entity Person in Role {
+id: Long,
+active: Bool,
 username: String ,
 name: String,
 surname: String,
@@ -25,8 +26,5 @@ id: Long,
 title: String,
 description: String,
 person_id: Long,
-owner: Person,
-managedBy: Set<Person>,
-attendants: Set<Person>,
 requesters: Set<Person>
 };
