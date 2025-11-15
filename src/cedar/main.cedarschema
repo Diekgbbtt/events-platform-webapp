@@ -1,6 +1,3 @@
-
-entity Role;
-
 entity Category;
 entity Log;
 entity Consent;
@@ -9,6 +6,7 @@ entity Purpose;
 entity EventsContainer;
 entity CategoriesContainer;
 entity AdsContainer;
+entity Role;
 
 entity Person in Role;
 
