@@ -107,11 +107,21 @@ Helper function to safely get attribute with Cedar authorization
 If not authorized, returns RESTRICTED instead of the actual value
 """
 def get_authorized_attribute(_self, _property, _caller, _action, _self_resource, context={}, entities=None):
+    
     value = getattr(_self, _property)
-    if current_user.is_authenticated and check_cedar_permission(_caller, _action, _self_resource, context=context, entities=entities):
-        return value
+    
     if isinstance(value, list):
-        return []
+        authorized_list = []
+        if not current_user.is_authenticated:
+            return []
+        for v in value:
+            # if check_cedar_permission(_caller, _action, _self_resource, context={"requester" : {"id" : v.id}}, entities=entities):
+            if current_user.id == v.id or check_cedar_permission(_caller, _action, _self_resource, context={}, entities=entities):
+               authorized_list.append(v)
+        return authorized_list
+
+    elif current_user.is_authenticated and check_cedar_permission(_caller, _action, _self_resource, context=context, entities=entities):
+        return value
     return RESTRICTED
 
 """
@@ -203,13 +213,13 @@ def unsubscribe(id):
         db.session.commit()
         
 def _serialize_event(event):
-    requesters = get_authorized_attribute(event, "requesters", current_user, "readEventRequesters", event)
+    requesters = get_authorized_attribute(_self=event, _property="requesters", _caller=current_user, _action='Action::"readEventRequesters"', _self_resource=event)
     if isinstance(requesters, list) and requesters is not RESTRICTED:
         requesters = PersonDTO._clones(requesters)
 
-    logs = get_authorized_attribute(event, "logs", current_user, "readEventLogs", event)
-    if isinstance(logs, list) and logs is not RESTRICTED:
-        logs = LogDTO._clones(logs)
+    # logs = get_authorized_attribute(event, "logs", current_user, "readEventLogs", event)
+    # if isinstance(logs, list) and logs is not RESTRICTED:
+    #     logs = LogDTO._clones(logs)
 
     return EventDTO(
         id=event.id,
@@ -220,15 +230,14 @@ def _serialize_event(event):
         managedBy=PersonDTO._clones(event.managedBy),
         attendants=PersonDTO._clones(event.attendants),
         requesters=requesters,
-        logs=logs,
+        logs=[],
     )
 
 
 def events():   
     events = Event.query.all()
-    events_dto = [_serialize_event(e) for e in events]
     categories = CategoryDTO.copies(Category.query.all())
-    return {'events': events_dto, 'categories': categories}
+    return {'events': events, 'categories': categories}
     
 def create_event():
     try:
@@ -256,7 +265,6 @@ def create_event():
 
 def view_event(id):
     event = Event.query.get(id)
-    event_dto = _serialize_event(event)
     # Create a log entry for viewing the event
     log = Log()
     log.timestamp = int(time.time())
@@ -264,7 +272,7 @@ def view_event(id):
     log.event = event
     db.session.add(log)
     db.session.commit()
-    return {'event': event_dto}
+    return {'event': event}
 
 def edit_event(id):
     event = EventDTO.copy(Event.query.get(id))
@@ -297,8 +305,8 @@ def update_event():
     return request.form["id"]
 
 def manage_event(id):
-    event = EventDTO.copy(Event.query.get(id))
-    return {'event': event}
+    event_dto = _serialize_event(Event.query.get(id))
+    return {'event': event_dto}
 
 def remove_category(id,c):
     event = Event.query.get(id)

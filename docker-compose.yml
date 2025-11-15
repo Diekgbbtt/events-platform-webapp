@@ -6,6 +6,7 @@ services:
     platform: linux/amd64
     ports:
      - "127.0.0.1:5000:5000"
+     - "127.0.0.1:5001:5001"
     volumes:
      - .:/project
     restart: unless-stopped

@@ -1,12 +1,24 @@
 // TODO
 
-entity Role;
-entity Category;
-entity Event;
+entity Role{
+    id: String,
+};
+entity Category{
+    id: Long
+};
+entity Log{
+    id: Long
+};
+entity Consent{
+    id: Long
+};
+entity Purpose{
+    id: Long
+};
 
 // hierarchy of roles with inherited permissions, see
 // PREMIUMUSER has all permissions of REGULARUSER 
-// EVENTOWNER has all permissions of EVENTMANAGER 
+// EVENTOWNER has all permissions of EVENTMANAGER
 
 entity EventsContainer;
 entity CategoriesContainer;
@@ -20,29 +32,26 @@ username: String ,
 name: String,
 surname: String,
 gender: String,
-mail: String,
+email: String,
 events: Set<Event>,
-attends: Set<Event>,
 manages: Set<Event>,
-requests: Set<Event>
+attends: Set<Event>,
+requests: Set<Event>,
+subscriptions: Set<Category>,
+moderates: Set<Event>,
+consents: Set<Consent>,
+logs: Set<Log>
 };
 
-// entity Event in Category {
-// id: Long ,
-// title: String,
-// description: String,
-// person_id : Long
-// };
-
-
-
-
-
-
-****************** EXAMPLES **********************************
-
-// several actions in a single definition
-action addThought , voteThought , deleteThought appliesTo {
-principal: Person ,
-resource: Thought
+entity Event {
+id: Long,
+title: String,
+description: String,
+person_id: Long,
+owner: Person,
+categories: Set<Category>,
+managedBy: Set<Person>,
+attendants: Set<Person>,
+requesters: Set<Person>,
+logs: Set<Log>
 };
