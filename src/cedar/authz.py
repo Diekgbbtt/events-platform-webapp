@@ -69,7 +69,7 @@ class EntitySerializer:
 
         for attr in mapper.column_attrs + mapper.relationships:
             k = attr.key
-            if k in ["id", "_sa_instance_state", "password", "roles"]:
+            if k in ["id", "_sa_instance_state", "password", "roles", "logs", "requests"]:
                 continue
             v = getattr(subject, k)
             

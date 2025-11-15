@@ -1,14 +1,10 @@
-// TODO
+
 
 entity Role;
 entity Category;
 entity Log;
 entity Consent;
 entity Purpose;
-
-// hierarchy of roles with inherited permissions, see
-// PREMIUMUSER has all permissions of REGULARUSER 
-// EVENTOWNER has all permissions of EVENTMANAGER
 
 entity EventsContainer;
 entity CategoriesContainer;
@@ -21,9 +17,7 @@ active: Bool ,
 username: String ,
 name: String,
 surname: String,
-gender: String,
-requests: Set<Event>,
-logs: Set<Log>
+gender: String
 };
 
 entity Event {
@@ -32,7 +26,7 @@ title: String,
 description: String,
 person_id: Long,
 owner: Person,
+managedBy: Set<Person>,
 attendants: Set<Person>,
-requesters: Set<Person>,
-logs: Set<Log>
+requesters: Set<Person>
 };
