@@ -173,6 +173,10 @@ def update_user():
     return request.form["id"]
 
 def join(id):
+    if not current_user.is_authenticated:
+        raise SecurityException(
+            msg="not authenticated users can't request to join events", page="sec_error.html"
+        )
     event = Event.query.get(id)
     if current_user.id not in [p.id for p in event.requesters]:
         p = Person.query.get(current_user.id)
@@ -222,7 +226,6 @@ def _serialize_event(event):
             for r in event.requesters:
                 if check_cedar_permission(_caller=current_user, _action="readEventRequesters", _resource=event, context={"requesterusr" : r.username.strip()}):
                     accessible_requests.append(r)
-
     
     # logs = get_authorized_attribute(event, "logs", current_user, "readEventLogs", event)
     # if isinstance(logs, list) and logs is not RESTRICTED:
@@ -288,29 +291,39 @@ def edit_event(id):
     return {'event': event, 'categories': categories}
 
 def update_event():
-    event = Event.query.get(request.form["id"])
-    # Updating event's title if it has changed
-    if event.title != request.form["title"]:
-        event.title = request.form["title"]
-    # Updating event's description if it has changed
-    if event.description != request.form["description"]:
-        event.description = request.form["description"]
-    # Updating event's categories if they have changed
-    new_categories = [int(id) for id in request.form.getlist("categories")]
-    current_categories = [c.id for c in event.categories]
-    if set(current_categories) != set(new_categories):
-        ids_to_remove = set(current_categories) - set(new_categories)
-        ids_to_add = set(new_categories) - set(current_categories)
-        # Only remove the deleted ones
-        for cid in ids_to_remove:
-            c = Category.query.get(cid)
-            event.categories.remove(c)
-        # and add the new ones
-        for cid in ids_to_add:
-            c = Category.query.get(cid)
-            event.categories.append(c)
-    db.session.commit()
-    return request.form["id"]
+    try:
+        if not current_user.is_authenticated:
+            raise SecurityException(
+                msg="update event not allowed for not authenticated users", page='sec_error.html'
+            )
+        
+        event = Event.query.get(request.form["id"])
+        cedar.assert_allowed(principal=current_user, action="updateEvent", resource=event)
+        # Updating event's title if it has changed
+        if event.title != request.form["title"]:
+            event.title = request.form["title"]
+        # Updating event's description if it has changed
+        if event.description != request.form["description"]:
+            event.description = request.form["description"]
+        # Updating event's categories if they have changed
+        new_categories = [int(id) for id in request.form.getlist("categories")]
+        current_categories = [c.id for c in event.categories]
+        if set(current_categories) != set(new_categories):
+            ids_to_remove = set(current_categories) - set(new_categories)
+            ids_to_add = set(new_categories) - set(current_categories)
+            # Only remove the deleted ones
+            for cid in ids_to_remove:
+                c = Category.query.get(cid)
+                event.categories.remove(c)
+            # and add the new ones
+            for cid in ids_to_add:
+                c = Category.query.get(cid)
+                event.categories.append(c)
+        db.session.commit()
+        return request.form["id"]
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
 
 def manage_event(id):
     event_dto = _serialize_event(Event.query.get(id))
@@ -325,45 +338,88 @@ def remove_category(id,c):
     return c
 
 def promote_manager(id,e):
-    user = Person.query.get(id)
-    event = Event.query.get(e)
-    if user not in event.managedBy:
-        event.managedBy.append(user)
-        db.session.commit()
-    return e
+    try:
+        if not current_user.is_authenticated:
+            raise SecurityException(
+            msg="promote event attendants to managers not allowed for not authenticated users", page='sec_error.html'
+            )
+        user = Person.query.get(id)
+        event = Event.query.get(e)
+        cedar.assert_allowed(principal=current_user, action="promoteAttendant", resource=event)
+        if user not in event.managedBy:
+            event.managedBy.append(user)
+            db.session.commit()
+        return e
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
 
 def demote_manager(id,e):
-    user = Person.query.get(id)
-    event = Event.query.get(e)
-    if user in event.managedBy:
-        event.managedBy.remove(user)
-        db.session.commit()
-    return e
+    try:
+        if not current_user.is_authenticated:
+            raise SecurityException(
+            msg="demote event managers not allowed for not authenticated users", page='sec_error.html'
+            )
+        user = Person.query.get(id)
+        event = Event.query.get(e)
+        cedar.assert_allowed(principal=current_user, action="demoteManager", resource=event, context={"demotedManager" : serializer._entity_pointer(subject=user)})
+        if user in event.managedBy:
+            event.managedBy.remove(user)
+            db.session.commit()
+        return e
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
 
 def remove_attendee(id,e):
-    user = Person.query.get(id)
-    event = Event.query.get(e)
-    if user in event.attendants:
-        event.attendants.remove(user)
-        db.session.commit()
-    return e
-
+    try:
+        if not current_user.is_authenticated:
+            raise SecurityException(
+            msg="remove event attendants not allowed for not authenticated users", page='sec_error.html'
+            )
+        user = Person.query.get(id)
+        event = Event.query.get(e)
+        cedar.assert_allowed(principal=current_user, action="removeAttendant", resource=event, context={"removedAttendant" : serializer._entity_pointer(subject=user)})
+        if user in event.attendants:
+            event.attendants.remove(user)
+            db.session.commit()
+        return e
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
 def accept_request(id,e):
-    user = Person.query.get(id)
-    event = Event.query.get(e)
-    if user not in event.attendants:
-        event.attendants.append(user)
-    event.requesters.remove(user)
-    db.session.commit()
-    return e
+    try:
+        if not current_user.is_authenticated:
+            raise SecurityException(
+            msg="accept event requests not allowed for not authenticated users", page='sec_error.html'
+            )
+        user = Person.query.get(id)
+        event = Event.query.get(e)
+        cedar.assert_allowed(principal=current_user, action="acceptRequest", resource=event)
+        if user not in event.attendants:
+            event.attendants.append(user)
+        event.requesters.remove(user)
+        db.session.commit()
+        return e
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
 
 def reject_request(id,e):
-    user = Person.query.get(id)
-    event = Event.query.get(e)
-    event.requesters.remove(user)
-    db.session.commit()
-    return e
-
+    try:
+        if not current_user.is_authenticated:
+            raise SecurityException(
+            msg="reject event requests not allowed for not authenticated users", page='sec_error.html'
+            )
+        user = Person.query.get(id)
+        event = Event.query.get(e)
+        cedar.assert_allowed(principal=current_user, action="rejectRequest", resource=event, context={"rejectedRequester" : serializer._entity_pointer(user)})
+        event.requesters.remove(user)
+        db.session.commit()
+        return e
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
 def categories():
     categories = CategoryDTO.copies(Category.query.all())
     return {'categories': categories}

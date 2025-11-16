@@ -170,7 +170,7 @@ class EntitySerializer:
                 "type": subject.__class__.__name__,
                 "id": str(identifier).strip()
             }
-        } 
+        }
 
 
 class CedarClient:
