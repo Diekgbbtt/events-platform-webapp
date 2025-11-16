@@ -22,7 +22,7 @@ PURPOSES = [
 
 # Setup Cedar
 serializer = EntitySerializer()
-# TODO
+
 POLICY_PATH = os.path.join(os.path.dirname(__file__), "cedar", "main.cedar")
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "cedar", "main.cedarschema")
 
@@ -139,10 +139,42 @@ def users():
     users = PersonDTO.copies(Person.query.all())
     return {'users' : users}
 
+def _serialize_user(user : Person):
+    
+    if not current_user.is_authenticated or not check_cedar_permission(_caller=current_user, _action="readPerson", _resource=user):
+        user.password = RESTRICTED
+        user.email = RESTRICTED
+        user.gender = RESTRICTED
+        user.events = []
+        user.manages = []
+        user.attends = []
+        user.requests = []
+        user.subscriptions = []
+        user.logs = []
+
+    return PersonDTO(
+        id=user.id,
+        name=user.name,
+        surname=user.surname,
+        username=user.username,
+        password=user.password,
+        email=user.email,
+        gender=user.gender,
+        roles=RoleDTO._clones(user.roles),
+        events=EventDTO._clones(user.events),
+        manages=EventDTO._clones(user.manages),
+        attends=EventDTO._clones(user.attends),
+        requests=EventDTO._clones(user.requests),
+        subscriptions=CategoryDTO._clones(user.subscriptions),
+        moderates=CategoryDTO._clones(user.moderates),
+        logs=LogDTO._clones(user.logs)
+    )
+
+
 def user(id):
-    user = PersonDTO.copy(Person.query.get(id))
+    user_dto = _serialize_user(Person.query.get(id))
     roles = RoleDTO.copies(Role.query.all())
-    return {'user' : user, 'roles' : roles}
+    return {'user' : user_dto, 'roles' : roles}
 
 def profile():
     user = PersonDTO.copy(current_user)
@@ -150,27 +182,37 @@ def profile():
     return {'user': user, 'ad': ad}
 
 def update_user():
-    user = Person.query.get(request.form["id"])
-    # Updating user's name field if it has changed
-    if request.form["name"] and user.name != request.form["name"]:
-        user.name = request.form["name"]
-    # Updating user's surname field if it has changed
-    if request.form["surname"] and user.surname != request.form["surname"]:
-        user.surname = request.form["surname"]
-    # Updating user's email field if it has changed
-    if request.form["email"] and user.email != request.form["email"]:
-        user.email = request.form["email"]
-    # Updating user's gender field if it has changed
-    new_gender = request.form["gender"]
-    if new_gender == "":
-        new_gender = None
-    if new_gender != user.gender:
-        user.gender = new_gender
-    # Updating user's role if it has changed
-    if user.role.name != request.form["role"]:
-        user.role = Role.query.filter_by(name=request.form["role"]).first()
-    db.session.commit()
-    return request.form["id"]
+    try:
+        if not current_user.is_authenticated:
+            raise SecurityException(
+                msg="not authenticated users can't request to join events", page="sec_error.html"
+            )
+        user = Person.query.get(request.form["id"])
+        cedar.assert_allowed(principal=current_user, action="updateUser", resource=user)
+        # Updating user's name field if it has changed
+        if request.form["name"] and user.name != request.form["name"]:
+            user.name = request.form["name"]
+        # Updating user's surname field if it has changed
+        if request.form["surname"] and user.surname != request.form["surname"]:
+            user.surname = request.form["surname"]
+        # Updating user's email field if it has changed
+        if request.form["email"] and user.email != request.form["email"]:
+            user.email = request.form["email"]
+        # Updating user's gender field if it has changed
+        new_gender = request.form["gender"]
+        if new_gender == "":
+            new_gender = None
+        if new_gender != user.gender:
+            user.gender = new_gender
+        # Updating user's role if it has changed
+        if user.role.name != request.form["role"]:
+            if check_cedar_permission(_caller=current_user, action="updateUserRole", resource=user):
+                user.role = Role.query.filter_by(name=request.form["role"]).first()
+        db.session.commit()
+        return request.form["id"]
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
 
 def join(id):
     if not current_user.is_authenticated:
@@ -191,18 +233,36 @@ def leave(id):
         db.session.commit()
 
 def add_moderator(id,c):
-    user = Person.query.get(id)
-    category = Category.query.get(c)
-    if user not in category.moderators:
-        category.moderators.append(user)
-        db.session.commit()
+    try:
+        if not current_user.is_authenticated:
+            raise SecurityException (
+                msg=f"create event not allowed for not authenticated users", page='sec_error.html'
+            )
+        user = Person.query.get(id)
+        category = Category.query.get(c)
+        cedar.assert_allowed(principal=current_user, action="addCategoryModerator", resource=category)
+        if user not in category.moderators:
+            category.moderators.append(user)
+            db.session.commit()
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
 
 def remove_moderator(id,c):
-    user = Person.query.get(id)
-    category = Category.query.get(c)
-    if user in category.moderators:
-        category.moderators.remove(user)
-        db.session.commit()
+    try:    
+        if not current_user.is_authenticated:
+            raise SecurityException (
+                    msg=f"create event not allowed for not authenticated users", page='sec_error.html'
+            )
+        user = Person.query.get(id)
+        category = Category.query.get(c)
+        cedar.assert_allowed(principal=current_user, action="removeCategoryModerator", resource=category, context={"removedModerator" : serializer._entity_pointer(user)})
+        if user in category.moderators:
+            category.moderators.remove(user)
+            db.session.commit()
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
 
 def subscribe(id):
     category = Category.query.get(id)
@@ -291,6 +351,7 @@ def edit_event(id):
     return {'event': event, 'categories': categories}
 
 def update_event():
+    # TODO core_info and categories edit only allowed to event managers
     try:
         if not current_user.is_authenticated:
             raise SecurityException(
@@ -309,16 +370,19 @@ def update_event():
         new_categories = [int(id) for id in request.form.getlist("categories")]
         current_categories = [c.id for c in event.categories]
         if set(current_categories) != set(new_categories):
+        # principal could be moderator of both categories that are beign added and removed 
             ids_to_remove = set(current_categories) - set(new_categories)
             ids_to_add = set(new_categories) - set(current_categories)
             # Only remove the deleted ones
             for cid in ids_to_remove:
                 c = Category.query.get(cid)
-                event.categories.remove(c)
+                if check_cedar_permission(_caller=current_user, _action="removeCategoryEvent", _resource=c, context={"eventmanagers" : [serializer._entity_pointer(p) for p in event.managedBy]}):
+                    event.categories.remove(c)
             # and add the new ones
             for cid in ids_to_add:
                 c = Category.query.get(cid)
-                event.categories.append(c)
+                if check_cedar_permission(_caller=current_user, _action="addCategoryEvent", _resource=c, context={"eventmanagers" : [serializer._entity_pointer(p) for p in event.managedBy]}):
+                    event.categories.append(c)
         db.session.commit()
         return request.form["id"]
     except SecurityException as se:
@@ -330,13 +394,21 @@ def manage_event(id):
     return {'event': event_dto}
 
 def remove_category(id,c):
-    event = Event.query.get(id)
-    category = Category.query.get(c)
-    if event in category.events:
-        category.events.remove(event)
-        db.session.commit()
-    return c
-
+    try:
+        if not current_user.is_authenticated:
+            raise SecurityException(
+                msg="not authenticated users can't remove events from categories"
+            )
+        event = Event.query.get(id)
+        category = Category.query.get(c)
+        cedar.assert_allowed(principal=current_user, action="removeCategoryEvent", resource=category, context={"eventmanagers" : [serializer._entity_pointer(p) for p in event.managedBy]})
+        if event in category.events:
+            category.events.remove(event)
+            db.session.commit()
+        return c
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
 def promote_manager(id,e):
     try:
         if not current_user.is_authenticated:
@@ -425,14 +497,33 @@ def categories():
     return {'categories': categories}
 
 def create_category():
-    category = Category()
-    category.name = request.form["name"]
-    db.session.add(category)
-    db.session.commit()
+    try:
+        if not current_user.is_authenticated:
+            raise SecurityException(
+                msg="not authenticated users can't create new categories"
+            )
+        cedar.assert_allowed(principal=current_user, action="addCategory", resource='CategoriesContainer::"Global"')
+        category = Category()
+        category.name = request.form["name"]
+        db.session.add(category)
+        db.session.commit()
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
+
+def _serialize_category(category):
+    return CategoryDTO(
+        id=category.id,
+        name=category.name,
+        subscribers=(PersonDTO._clones(category.subscribers) if check_cedar_permission(_caller=current_user, _action="readCategorySubscribers", _resource=category) else []),
+        moderators=PersonDTO._clones(category.moderators),
+        events=EventDTO._clones(category.events)
+    )
+
 
 def view_category(id):
-    category = CategoryDTO.copy(Category.query.get(id))
-    return {'category': category}
+    category_dto = _serialize_category(Category.query.get(id))
+    return {'category': category_dto}
 
 def edit_category(id):
     cat = Category.query.get(id)
@@ -441,7 +532,12 @@ def edit_category(id):
     return {'category': category, 'candidates': candidates}
 
 def update_category():
+    if not current_user.is_authenticated:
+        raise SecurityException (
+            msg="Analyze event not allowed for not authenticated users", page='sec_error.html'
+            )
     category = Category.query.get(request.form["id"])
+    cedar.assert_allowed(principal=current_user, action="updateCategory", resource=category)
     if category.name != request.form["name"]:
         category.name = request.form["name"]
     db.session.commit()
@@ -452,21 +548,46 @@ def ads():
     return {'ads': ads}
 
 def remove_ad(id):
-    ad = Ad.query.get(id)
-    db.session.delete(ad)
-    db.session.commit()
-
+    try:
+        if not current_user.is_authenticated:
+            raise SecurityException (
+            msg="Create Ad not allowed for not authenticated users", page='sec_error.html'
+            )
+        ad = Ad.query.get(id)
+        cedar.assert_allowed(principal=current_user, action="removeAd", resource=ad)
+        db.session.delete(ad)
+        db.session.commit()
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
 def create_ad():
-    ad = Ad()
-    ad.content = request.form["content"]
-    db.session.add(ad)
-    db.session.commit()
+    try:
+        if not current_user.is_authenticated:
+            raise SecurityException (
+            msg="Create Ad not allowed for not authenticated users", page='sec_error.html'
+            )
+        cedar.assert_allowed(principal=current_user, action="addAd", resource='AdContainer::"Global"')
+        ad = Ad()
+        ad.content = request.form["content"]
+        db.session.add(ad)
+        db.session.commit()
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
 
 def send_mass_advertisement(id):
-    category = Category.query.get(id)
-    for subscriber in category.subscribers:
-        send_advertisement_to_user(subscriber) 
-
+    try:
+        if not current_user.is_authenticated:
+            raise SecurityException (
+            msg="Analyze event not allowed for not authenticated users", page='sec_error.html'
+            )
+        category = Category.query.get(id)
+        cedar.assert_allowed(principal=current_user, action="addAd", resource='AdContainer::"Global"')
+        for subscriber in category.subscribers:
+            send_advertisement_to_user(subscriber) 
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
 def analyze(id):
     try:
         if not current_user.is_authenticated:

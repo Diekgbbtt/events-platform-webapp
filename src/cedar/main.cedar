@@ -2,10 +2,27 @@
 // TODO add contextual check principal.active in all policies
 permit (
     principal is Person,
+    action == Action::"readPerson",
+    resource is Person
+) when {
+    principal in Role::"ADMIN" || principal == resource
+};
+
+permit (
+    principal is Person,
     action == Action::"readEventRequesters",
     resource is Event
 ) when {
     principal.username == context.requesterusr || principal in Role::"ADMIN"
+};
+
+
+permit (
+    principal is Person,
+    action == Action::"readCategorySubscribers",
+    resource is Category
+) when {
+    principal in Role::"ADMIN" || resource.moderators.contains(principal)
 };
 
 permit (
@@ -17,12 +34,44 @@ permit (
 };
 
 permit (
+    principal is Person in Role::"ADMIN",
+    action == Action::"addAd",
+    resource is AdContainer
+);
+
+permit (
+    principal is Person in Role::"ADMIN",
+    action == Action::"addCategory",
+    resource is CategoriesContainer
+);
+
+permit (
     principal is Person,
     action == Action::"updateEvent",
     resource is Event
 ) when {
     principal in Role::"ADMIN" || resource.managedBy.contains(principal)
 };
+
+permit (
+    principal is Person,
+    action == Action::"updateUser",
+    resource is Person
+) when {
+    principal in Role::"ADMIN" || principal == resource
+};
+
+permit (
+    principal is Person in Role::"ADMIN",
+    action == Action::"updateUserRole",
+    resource is Person
+);
+
+permit (
+    principal is Person in Role::"ADMIN",
+    action == Action::"updateCategory",
+    resource is Category
+);
 
 forbid (
     principal is Person,
@@ -63,6 +112,42 @@ permit (
 ) when {
     principal in Role::"ADMIN" ||  resource.managedBy.contains(principal) || principal == context.removedAttendant
 };
+
+permit (
+    principal is Person in Role::"ADMIN",
+    action == Action::"removeAd",
+    resource is Ad
+);
+
+permit (
+    principal is Person,
+    action == Action::"removeCategoryEvent",
+    resource is Category
+) when {
+    principal in Role::"ADMIN" || resource has moderators && resource.moderators.contains(principal) || context.eventmanagers.contains(principal)
+};
+
+permit (
+    principal is Person,
+    action == Action::"removeCategoryModerator",
+    resource is Category
+) when {
+    principal in Role::"ADMIN" || context.removedModerator == principal
+};
+
+permit (
+    principal is Person,
+    action == Action::"addCategoryEvent",
+    resource is Category
+) when {
+    principal in Role::"ADMIN" || context.eventmanagers.contains(principal)
+};
+
+permit (
+    principal is Person in Role::"ADMIN",
+    action == Action::"addCategoryModerator",
+    resource is Category
+);
 
 permit (
     principal is Person,

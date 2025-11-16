@@ -280,7 +280,8 @@ class EventDTO:
         if not clone.id in EventDTO._cache:
             EventDTO._cache[clone.id] = EventDTO(clone.id,
                                                 title=clone.title,
-                                                description=clone.description) 
+                                                description=clone.description,
+                                                owner=clone.owner) 
         return EventDTO._cache[clone.id]
        
 
@@ -406,7 +407,7 @@ class LogDTO:
         r = LogDTO(copy.id,
                      copy.timestamp,
                      event=EventDTO._clone(copy.event),
-                     user=PersonDTO._clone(copy.user))
+                     user=PersonDTO._clone(copy.user) if copy.user else None)
         if not bulk:
                 _clear_cache()
         return r
@@ -426,6 +427,6 @@ class LogDTO:
             if self not in event.logs:
                 event.logs.append(self)
         self.user=user
-        if user != RESTRICTED:
+        if user != None and user != RESTRICTED:
             if self not in user.logs:
                 user.logs.append(self)

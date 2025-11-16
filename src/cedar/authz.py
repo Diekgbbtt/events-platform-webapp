@@ -84,15 +84,16 @@ class EntitySerializer:
             
             if isinstance(v, list):
                 serialized_value = self._serialize_attribute_values(v)
-                if not len(serialized_value) == 0:
-                    attributes[k] = serialized_value
+                # if not len(serialized_value) == 0:
+                # attributes[k] = serialized_value
 
             else: 
                 serialized_value = self._serialize_attribute_value(v)
-                # if serialized_value is None and k in ["email"]:
-                #     serialized_value = ""
-                if serialized_value is not None:
-                    attributes[k] = serialized_value
+                if serialized_value is None and k in ["email", "gender", "name", "surname"]:
+                    serialized_value = ""
+                # if serialized_value is not None:
+            
+            attributes[k] = serialized_value
         
         cedar_type = subject.__class__.__name__
         object_id = str(getattr(subject, "id", getattr(subject, "name", None)))
