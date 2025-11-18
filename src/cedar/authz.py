@@ -73,6 +73,7 @@ class EntitySerializer:
 
         Returns complete entity with UID, attributes, and parents
         """
+        # TODO unwrap local_proxy in Person if current_user is wrapped in local_proxy for threat-bound handling 
         attributes = {}
         mapper = inspect(subject).mapper
 
@@ -244,7 +245,9 @@ class CedarClient:
             if isinstance(entity, dict):
                 entities_json.append(entity)
             else:
-                entities_json.append(self.serializer.entity_json(entity))
+                ent_json = self.serializer.entity_json(entity)
+                if ent_json not in entities_json:
+                    entities_json.append(ent_json)
         # always add roles entities with hierarchy
         entities_json.extend(self._static_entities)
 

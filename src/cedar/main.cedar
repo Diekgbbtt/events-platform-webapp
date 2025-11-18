@@ -10,6 +10,20 @@ permit (
 
 permit (
     principal is Person,
+    action == Action::"readLog",
+    resource is Log
+) when {
+    principal in Role::"ADMIN" || resource.user == principal
+};
+
+permit (
+    principal is Person in Role::"ADMIN",
+    action == Action::"readAllLogs",
+    resource is LogContainer
+);
+
+permit (
+    principal is Person,
     action == Action::"readEventRequesters",
     resource is Event
 ) when {

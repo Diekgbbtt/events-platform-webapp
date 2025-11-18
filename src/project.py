@@ -1,6 +1,6 @@
 from flask import request
 from flask_user import current_user, login_required
-from model import db, Person, Role, Event, Category, Purpose, Ad, AnyPurpose, FunctionalPurpose, MarketingPurpose, AnalyticsPurpose, CorePurpose, RecommendEventsPurpose, TargetedMarketingPurpose, MassMarketingPurpose, Log, MODERATOR
+from model import ADMIN, db, Person, Role, Event, Category, Purpose, Ad, Consent, AnyPurpose, FunctionalPurpose, MarketingPurpose, AnalyticsPurpose, CorePurpose, RecommendEventsPurpose, TargetedMarketingPurpose, MassMarketingPurpose, Log, MODERATOR
 from dto import PersonDTO, EventDTO, CategoryDTO, RoleDTO, AdDTO, LogDTO, RESTRICTED
 import hashlib
 import random
@@ -15,7 +15,7 @@ PURPOSES = [
     MarketingPurpose, 
     AnalyticsPurpose, 
     CorePurpose, 
-    RecommendEventsPurpose, 
+    RecommendEventsPurpose,
     TargetedMarketingPurpose, 
     MassMarketingPurpose
 ]
@@ -54,28 +54,52 @@ Your task is to define them according to the privacy requirements in the project
 
 PRIVACY_INPUT = {
     AnyPurpose: {
-        "data": [("Person", "name"), ("Person", "manages")],
+        "data": [("Person", "name"), ("Person", "surname"), ("Person", "gender"), ("Person", "role"), ("Person", "email"), ("Person", "subscriptions"), ("Person", "logs"), ("Log", "event")],
         "children": {
             MarketingPurpose: {
-                "data": [],
+                "data": [("Person", "name"), ("Person", "gender"), ("Person", "email")],
                 "children": {
-                    MassMarketingPurpose: {
-                        "data": [("Category", "name")],
+                    TargetedMarketingPurpose: {
+                        "data": [("Category", "name"), ("Person", "gender")],
                         "children": {},
-                        "constraintDesc": "some other conditions"
+                        "constraintDesc": ""
+                    },
+                    MassMarketingPurpose: {
+                        "data": [("Category", "name"), ("Person", "email")],
+                        "children": {},
+                        "constraintDesc": ""
                     }
                 }
+            },
+            AnalyticsPurpose: {
+                "data": [("Person", "gender")],
+                "children": {},
+                "constraintDesc": ""
+            },
+            FunctionalPurpose: {
+                "data": [("Person", "logs"), ("Log", "event"), ("Person", "name"), ("Person", "surname"), ("Person", "gender"), ("Person", "role"), ("Person", "email")], # could be Person::name instead as it is what
+                "children": {
+                    RecommendEventsPurpose: {
+                        "data": [("Person", "logs")],
+                        "children": {
+                            RecommendEventsPurpose: {
+                                "data": [("Person", "subscriptions")],
+                                "children": {},
+                                "constraintDesc": " you are a REGULARUSER"
+                            }
+                        },
+                        "constraintDesc": ""
+                    },
+                    CorePurpose: {
+                        "data": [("Person", "name"), ("Person", "surname"), ("Person", "gender"), ("Person", "role"), ("Person", "email"), ("Person", "subscriptions")],
+                        "children": {},
+                        "constraintDesc": ""
+                    }
+                },
+                "constraintDesc": ""
             }
         }
-    },
-    # This is only an example; your task is to define the elements according 
-    # to the privacy requirements outlined in the project description.
-    FunctionalPurpose: {
-        "data": [("Person", "name")],
-        "children": {},
-        "constraintDesc": "some conditions"
     }
-    # ...
 }
 
 
@@ -102,6 +126,13 @@ def check_cedar_permission(_caller, _action, _resource, context={}, entities=Non
     except SecurityException:
         return False
 
+def check_access_consent(owner: Person, entity: str, attribute: str, purposes: list[str]):
+    try:
+        has_consent(owner, entity, attribute, purposes)
+        return True
+    except PrivacyException:
+        return False
+
 """
 Helper function to safely get attribute with Cedar authorization
 If not authorized, returns RESTRICTED instead of the actual value
@@ -124,6 +155,32 @@ def get_authorized_attribute(_self, _property, _caller, _action, _self_resource,
         return value
     return RESTRICTED
 
+
+
+def has_consent(owner: Person, entity: str, attribute: str, purposes: list[str]):
+    
+    owner_consent = (
+        Consent.query.join(Purpose)
+        .filter(
+            Consent.person_id == owner.id,
+            Consent.classname == entity,
+            Consent.propertyname == attribute,
+            Purpose.name.in_(purposes)
+        )
+        .first()
+    )
+    
+    if not owner_consent:
+        purposes_label = "', '".join(purposes)
+        raise PrivacyException(msg=fr"consent to access '{attribute}' of '{entity}' for purposes '{purposes_label}' not granted by '{owner.username}' ")
+
+def has_consents(owner: Person, entity: str, attributes: list[str], purposes: list[str]):
+    for a in attributes:
+        try:
+            has_consent(owner, entity, a, purposes)
+        except PrivacyException as pe:
+            raise pe
+
 """
 Use in case you need to initialize something
 """
@@ -131,55 +188,91 @@ def init():
     pass    
 
 def main():
-    user = PersonDTO.copy(current_user) 
-    recommended = recommend_events(user) if user.is_authenticated else []
+    recommended = []
+    user = current_user
+    if current_user.is_authenticated:
+        event_recommendation_perm = (
+            check_access_consent(current_user, "Person", "logs", [RecommendEventsPurpose, FunctionalPurpose, AnyPurpose])
+            and check_access_consent(current_user, "Log", "event", [FunctionalPurpose, AnyPurpose])
+        )
+        if current_user.role == "REGULARUSER":
+            event_recommendation_perm = (
+                event_recommendation_perm
+                and check_access_consent(current_user, "Person", "subscriptions", [RecommendEventsPurpose, FunctionalPurpose, AnyPurpose])
+            )     
+        
+        user = PersonDTO.copy(_serialize_user(current_user, ["name", "surname"]))
+        recommended = recommend_events(user) if event_recommendation_perm else []
+
     return {'user' : user, 'recommended_events': recommended}
 
 def users():
-    users = PersonDTO.copies(Person.query.all())
-    return {'users' : users}
+    users = Person.query.all()
+    users_dto = []
+    for u in users:
+        users_dto.append(
+            PersonDTO(
+                id=u.id,
+                name=u.name if check_access_consent(u, "Person", "name", [CorePurpose, FunctionalPurpose, AnyPurpose]) else RESTRICTED,
+                surname=u.surname if check_access_consent(u, "Person", "surname", [CorePurpose, FunctionalPurpose, AnyPurpose]) else RESTRICTED
+            )
+        )
+    return {'users' : users_dto}
 
-def _serialize_user(user : Person):
-    
-    if not current_user.is_authenticated or not check_cedar_permission(_caller=current_user, _action="readPerson", _resource=user):
-        user.password = RESTRICTED
-        user.email = RESTRICTED
-        user.gender = RESTRICTED
-        user.events = []
-        user.manages = []
-        user.attends = []
-        user.requests = []
-        user.subscriptions = []
-        user.logs = []
+def _serialize_user(user: Person, personal_data : list[str] = []):
+    if user is None:
+        return None
 
-    return PersonDTO(
-        id=user.id,
-        name=user.name,
-        surname=user.surname,
-        username=user.username,
-        password=user.password,
-        email=user.email,
-        gender=user.gender,
-        roles=RoleDTO._clones(user.roles),
-        events=EventDTO._clones(user.events),
-        manages=EventDTO._clones(user.manages),
-        attends=EventDTO._clones(user.attends),
-        requests=EventDTO._clones(user.requests),
-        subscriptions=CategoryDTO._clones(user.subscriptions),
-        moderates=CategoryDTO._clones(user.moderates),
-        logs=LogDTO._clones(user.logs)
+    user_dto = PersonDTO.copy(user)
+    can_read_person = (
+        current_user.is_authenticated
+        and check_cedar_permission(
+            _caller=current_user, _action="readPerson", _resource=user
+        )
     )
+
+    if not can_read_person:
+        user_dto.password = RESTRICTED
+        user_dto.email = RESTRICTED
+        user_dto.gender = RESTRICTED
+        user_dto.events = []
+        user_dto.manages = []
+        user_dto.attends = []
+        user_dto.requests = []
+        user_dto.subscriptions = []
+        user_dto.logs = []
+
+    for pd in personal_data or []:
+        if not hasattr(user_dto, pd):
+            continue
+        value = getattr(user_dto, pd)
+        if value == RESTRICTED:
+            continue
+        if not check_access_consent(user, "Person", pd, [CorePurpose, FunctionalPurpose, AnyPurpose]):
+            setattr(user_dto, pd, [] if isinstance(value, list) else RESTRICTED)
+
+    return user_dto
 
 
 def user(id):
-    user_dto = _serialize_user(Person.query.get(id))
-    roles = RoleDTO.copies(Role.query.all())
-    return {'user' : user_dto, 'roles' : roles}
+    # TODO MODERATORS can also read the email of the subscribers of the category they moderate.
+    user = Person.query.get(id)
+    user_dto = _serialize_user(user, ["name", "surname", "gender", "role", "email", "subscriptions"])
+    roles_dto = RoleDTO.copies(Role.query.all())
+    return {'user' : user_dto, 'roles' : roles_dto}
 
 def profile():
-    user = PersonDTO.copy(current_user)
-    ad = get_personalize_ad(user) if user.is_authenticated else None
-    return {'user': user, 'ad': ad}
+    if not current_user.is_authenticated:
+        return {'user': PersonDTO.copy(current_user), 'ad': None}
+    
+    ad_permission = (
+    has_consent(current_user, "Person", ["gender"], [TargetedMarketingPurpose, MarketingPurpose, AnyPurpose])
+    and has_consent(current_user, "Person", ["name"], [MarketingPurpose, AnyPurpose])
+    )
+    user_dto = _serialize_user(current_user, ["subscriptions"])
+    ad = get_personalize_ad(user_dto) if ad_permission else None
+    
+    return {'user': user_dto, 'ad': ad}
 
 def update_user():
     try:
@@ -188,6 +281,7 @@ def update_user():
                 msg="not authenticated users can't request to join events", page="sec_error.html"
             )
         user = Person.query.get(request.form["id"])
+        has_consents(user, "Person", ["name", "surname", "gender", "email", "role"], [CorePurpose, FunctionalPurpose, AnyPurpose])
         cedar.assert_allowed(principal=current_user, action="updateUser", resource=user)
         # Updating user's name field if it has changed
         if request.form["name"] and user.name != request.form["name"]:
@@ -265,16 +359,24 @@ def remove_moderator(id,c):
         raise se
 
 def subscribe(id):
-    category = Category.query.get(id)
-    if category not in current_user.subscriptions:
-        current_user.subscriptions.append(category)
-        db.session.commit()
+    if current_user.is_authenticated:
+        has_consent(current_user, "Person", "subscriptions", [CorePurpose, FunctionalPurpose, AnyPurpose])
+        if current_user.role == "REGULARUSER":
+            has_consent(current_user, "Person", "subscriptions", [RecommendEventsPurpose, FunctionalPurpose, AnyPurpose])
+        category = Category.query.get(id)
+        if category not in current_user.subscriptions:
+            current_user.subscriptions.append(category)
+            db.session.commit()
     
 def unsubscribe(id):
-    category = Category.query.get(id)
-    if category in current_user.subscriptions:
-        current_user.subscriptions.remove(category)
-        db.session.commit()
+    if current_user.is_authenticated:
+        has_consent(current_user, "Person", "subscriptions", [CorePurpose, FunctionalPurpose, AnyPurpose])
+        if current_user.role == "REGULARUSER":
+            has_consent(current_user, "Person", "subscriptions", [RecommendEventsPurpose, FunctionalPurpose, AnyPurpose])
+        category = Category.query.get(id)
+        if category in current_user.subscriptions:
+            current_user.subscriptions.remove(category)
+            db.session.commit()
         
 def _serialize_event(event):
     accessible_requests = []
@@ -283,10 +385,13 @@ def _serialize_event(event):
         if event.owner.id == current_user.id or any(current_user.id == manager.id for manager in event.managedBy) :
             accessible_requests = event.requesters
         else:
+            # cedar policy 'principal in Role::"ADMIN"'
+            has_consent(current_user, "Person", "role", [CorePurpose, FunctionalPurpose, AnyPurpose])
             for r in event.requesters:
                 if check_cedar_permission(_caller=current_user, _action="readEventRequesters", _resource=event, context={"requesterusr" : r.username.strip()}):
                     accessible_requests.append(r)
     
+    # TODO
     # logs = get_authorized_attribute(event, "logs", current_user, "readEventLogs", event)
     # if isinstance(logs, list) and logs is not RESTRICTED:
     #     logs = LogDTO._clones(logs)
@@ -300,7 +405,7 @@ def _serialize_event(event):
         managedBy=PersonDTO._clones(event.managedBy),
         attendants=PersonDTO._clones(event.attendants),
         requesters=PersonDTO._clones(accessible_requests),
-        logs=[],
+        logs=_serialize_logs(event.logs),
     )
 
 
@@ -315,7 +420,10 @@ def create_event():
             raise SecurityException (
                 msg=f"create event not allowed for not authenticated users", page='sec_error.html'
             )
+        has_consents(current_user, "Person", ["name", "surname", "gender", "email", "role"], [CorePurpose, FunctionalPurpose, AnyPurpose])
         current_user_events = Person.query.get(current_user.id).events
+        # TODO Hence, when writing an authorization constraint on managedBy, you can rely on the owner attribute being initialized, but not vice versa.
+        # do I have to set properly relationship by setting the other hand of the link as well
         cedar.assert_allowed(principal=current_user, action="addEvent", resource='EventsContainer::"Global"', context={"userEvents" : len(current_user_events)})
         event = Event()
         event.owner = current_user
@@ -335,8 +443,10 @@ def create_event():
 
 
 def view_event(id):
+    if current_user.is_authenticated:
+        # TODO check if necessary to verify consent for subscriptions also here
+        has_consents(current_user, "Person", ["name", "surname", "gender", "email", "role"], [CorePurpose, FunctionalPurpose, AnyPurpose])
     event = Event.query.get(id)
-    # Create a log entry for viewing the event
     log = Log()
     log.timestamp = int(time.time())
     log.user = current_user if current_user.is_authenticated else None
@@ -359,6 +469,7 @@ def update_event():
             )
         
         event = Event.query.get(request.form["id"])
+        # TODO verify if check access consent for core purpose as well because cedar build the json entity accessing all properties  
         cedar.assert_allowed(principal=current_user, action="updateEvent", resource=event)
         # Updating event's title if it has changed
         if event.title != request.form["title"]:
@@ -401,6 +512,7 @@ def remove_category(id,c):
             )
         event = Event.query.get(id)
         category = Category.query.get(c)
+        # TODO verify if check access consent for core purpose as well because cedar build the json entity accessing all properties  
         cedar.assert_allowed(principal=current_user, action="removeCategoryEvent", resource=category, context={"eventmanagers" : [serializer._entity_pointer(p) for p in event.managedBy]})
         if event in category.events:
             category.events.remove(event)
@@ -417,6 +529,9 @@ def promote_manager(id,e):
             )
         user = Person.query.get(id)
         event = Event.query.get(e)
+        # TODO verify if check access consent for core purpose as well because cedar build the json entity accessing all properties  
+        # for authZ policies that involve verification of ADMIN role I assume it is not required to check for consent as ADMIN is allegedly the owner of the platform, all other kind of users request lead firstly to an authZ deny decision 
+        # has_consent(user, "Person", "role", [CorePurpose, FunctionalPurpose, AnyPurpose])
         cedar.assert_allowed(principal=current_user, action="promoteAttendant", resource=event)
         if user not in event.managedBy:
             event.managedBy.append(user)
@@ -434,6 +549,9 @@ def demote_manager(id,e):
             )
         user = Person.query.get(id)
         event = Event.query.get(e)
+        # TODO verify if check access consent for core purpose as well because cedar build the json entity accessing all properties  
+        # for authZ policies that involve verification of ADMIN role I assume it is not required to check for consent as ADMIN is allegedly the owner of the platform, all other kind of users request lead firstly to an authZ deny decision 
+        # has_consent(user, "Person", "role", [CorePurpose, FunctionalPurpose, AnyPurpose])
         cedar.assert_allowed(principal=current_user, action="demoteManager", resource=event, context={"demotedManager" : serializer._entity_pointer(subject=user)})
         if user in event.managedBy:
             event.managedBy.remove(user)
@@ -451,6 +569,8 @@ def remove_attendee(id,e):
             )
         user = Person.query.get(id)
         event = Event.query.get(e)
+        # TODO verify if check access consent for core purpose as well because cedar build the json entity accessing all properties  
+        has_consent(user, "Person", "role", [CorePurpose, FunctionalPurpose, AnyPurpose])
         cedar.assert_allowed(principal=current_user, action="removeAttendant", resource=event, context={"removedAttendant" : serializer._entity_pointer(subject=user)})
         if user in event.attendants:
             event.attendants.remove(user)
@@ -467,6 +587,8 @@ def accept_request(id,e):
             )
         user = Person.query.get(id)
         event = Event.query.get(e)
+        # TODO verify if check access consent for core purpose as well because cedar build the json entity accessing all properties  
+        has_consent(user, "Person", "role", [CorePurpose, FunctionalPurpose, AnyPurpose])
         cedar.assert_allowed(principal=current_user, action="acceptRequest", resource=event)
         if user not in event.attendants:
             event.attendants.append(user)
@@ -485,6 +607,8 @@ def reject_request(id,e):
             )
         user = Person.query.get(id)
         event = Event.query.get(e)
+        # TODO verify if check access consent for core purpose as well because cedar build the json entity accessing all properties  
+        has_consent(user, "Person", "role", [CorePurpose, FunctionalPurpose, AnyPurpose])
         cedar.assert_allowed(principal=current_user, action="rejectRequest", resource=event, context={"rejectedRequester" : serializer._entity_pointer(user)})
         event.requesters.remove(user)
         db.session.commit()
@@ -502,6 +626,7 @@ def create_category():
             raise SecurityException(
                 msg="not authenticated users can't create new categories"
             )
+        # for authZ policies that involve verification of ADMIN role I assume it is not required to check for consent as ADMIN is allegedly the owner of the platform, all other kind of users request lead firstly to an authZ deny decision 
         cedar.assert_allowed(principal=current_user, action="addCategory", resource='CategoriesContainer::"Global"')
         category = Category()
         category.name = request.form["name"]
@@ -512,11 +637,39 @@ def create_category():
         raise se
 
 def _serialize_category(category):
+
+    consenting_subscribers = [
+        subscriber
+        for subscriber in category.subscribers
+        if check_access_consent(
+            subscriber,
+            "Person",
+            "subscriptions",
+            [CorePurpose, FunctionalPurpose, AnyPurpose],
+        )
+    ]
+    consenting_moderators = [
+        moderator
+        for moderator in category.moderators
+        if check_access_consent(
+            moderator,
+            "Person",
+            "subscriptions",
+            [CorePurpose, FunctionalPurpose, AnyPurpose],
+        )
+    ]
+    can_read_subscribers = current_user.is_authenticated and check_cedar_permission(
+        _caller=current_user,
+        _action="readCategorySubscribers",
+        _resource=category,
+    )
     return CategoryDTO(
         id=category.id,
         name=category.name,
-        subscribers=(PersonDTO._clones(category.subscribers) if check_cedar_permission(_caller=current_user, _action="readCategorySubscribers", _resource=category) else []),
-        moderators=PersonDTO._clones(category.moderators),
+        subscribers=(
+            PersonDTO._clones(consenting_subscribers) if can_read_subscribers else []
+        ),
+        moderators=PersonDTO._clones(consenting_moderators),
         events=EventDTO._clones(category.events)
     )
 
@@ -564,7 +717,7 @@ def create_ad():
     try:
         if not current_user.is_authenticated:
             raise SecurityException (
-            msg="Create Ad not allowed for not authenticated users", page='sec_error.html'
+                msg="Create Ad not allowed for not authenticated users", page='sec_error.html'
             )
         cedar.assert_allowed(principal=current_user, action="addAd", resource='AdContainer::"Global"')
         ad = Ad()
@@ -583,11 +736,14 @@ def send_mass_advertisement(id):
             )
         category = Category.query.get(id)
         cedar.assert_allowed(principal=current_user, action="addAd", resource='AdContainer::"Global"')
-        for subscriber in category.subscribers:
-            send_advertisement_to_user(subscriber) 
+        for sub in category.subscribers:
+            if check_access_consent(sub, "Person", "subscriptions", [CorePurpose, FunctionalPurpose, AnyPurpose]):
+                send_advertisement_to_user(sub) 
     except SecurityException as se:
         db.session.rollback()
         raise se
+
+        
 def analyze(id):
     try:
         if not current_user.is_authenticated:
@@ -597,9 +753,10 @@ def analyze(id):
         cedar.assert_allowed(principal=current_user, action="analyze", resource='Event::"Global"')
         event = EventDTO.copy(Event.query.get(id))
         gender_counts = {"male": 0, "female": 0, "unknown": 0}
-        for p in event.attendants:
-            gender = p.gender if p.gender in gender_counts else "unknown"
-            gender_counts[gender] += 1    
+        for a in event.attendants:
+            if check_access_consent(a, "Person", "gender", [AnalyticsPurpose, AnyPurpose]):
+                gender = a.gender if a.gender in gender_counts else "unknown"
+                gender_counts[gender] += 1    
         return {
             'event': event,
             'male': gender_counts['male'],
@@ -609,14 +766,49 @@ def analyze(id):
     except SecurityException as se:
         raise se
 
+
+def _serialize_log(log: Log):
+    
+    if log.user != None:
+
+        return LogDTO(
+            id=log.id,
+            timestamp=log.timestamp,
+            event=EventDTO.copy(log.event) if check_access_consent(log.user, "Person", "logs", [FunctionalPurpose, AnyPurpose]) else RESTRICTED,
+            user=PersonDTO.copy(log.user) if check_access_consent(log.user, "Person", "name", [CorePurpose, FunctionalPurpose, AnyPurpose]) else RESTRICTED
+        )
+    else:
+        return LogDTO.copy(log)
+
+
+def _serialize_logs(logs: list[Log]):
+    logs_dto: list[LogDTO] = []
+    if current_user.is_authenticated:     
+        if not check_cedar_permission(_caller=current_user, _action="readAllLogs", _resource='LogContainer::"Global"'):
+            for l in logs:
+                if check_cedar_permission(_caller=current_user, _action="readLog", _resource=l):
+                    logs_dto.append(_serialize_log(l))
+        else:
+            for l in logs:
+                logs_dto.append(_serialize_log(l))
+    
+    return logs_dto
+
 def logs():
-    logs = LogDTO.copies(Log.query.all())
+    if not current_user.is_authenticated:
+        raise SecurityException(
+            msg="not authenticated users can't read logs", page="sec_error.html"
+        )
+
+    logs_dto = _serialize_logs(Log.query.all())
+
     def format_timestamp(timestamp):
         try:
             return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp))
         except:
             return timestamp
-    return {'logs': logs, 'format_timestamp': format_timestamp}
+    
+    return {'logs': logs_dto, 'format_timestamp': format_timestamp}
 
 def recommend_events(user):
     subscribed_event_ids = []
@@ -645,10 +837,13 @@ def get_personalize_ad(user):
         return ads[random.randint(1, len(ads)) - 1]
 
 def send_advertisement_to_user(user):
-    if user.email:
+    if user.email and check_access_consent(user, "Person", "email", [MassMarketingPurpose, MarketingPurpose, AnyPurpose]):
         print(f'A generic advertisement was sent to {user.name} at email: {user.email}.', file=sys.stderr)
+    else:
+        print(f'{user.name} with email: {user.email}. either does not have sent an email or did not consent for its access with a massMarketingPurpose', file=sys.stderr)
 
 def get_candidates(cat):
+    # Given the responsibility of all moderators, I assume no access consent verification is required
     all_ids = [m.id for m in Person.query.all() if MODERATOR == m.role.name]
     mod_ids = [m.id for m in cat.moderators]
     candidate_ids = list(set(all_ids) - set(mod_ids)) 
