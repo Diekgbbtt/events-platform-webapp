@@ -1,0 +1,31 @@
+{% raw %}
+{% extends 'template.html' %}
+
+{% block main %}
+{% if user.is_authenticated %}
+    <h5 class="card-header">Welcome {{ user.username }}!</h5>
+{% else %}
+    <h5 class="card-header">Welcome anonymous user! </h5>
+{% endif %}
+<div class="card-body">
+<div class="list-group list-group-flush">
+{% endraw %}
+{%- for e in endpoints -%}
+   {{e | safe }}
+{% endfor -%}
+{% raw %}
+
+</div>
+</div>
+
+<a class="btn btn-secondary" href={{ url_for('policy') }}> Privacy policy </a>
+<div class="card-body">
+{% if user.is_authenticated %}
+    <a class="btn btn-secondary" href={{ url_for('user.logout')   }}>Logout</a>
+{% else %}
+    <a class="btn btn-primary" href={{ url_for('user.login')    }}>Login</a>
+    <a class="btn btn-secondary" href={{ url_for('user.register') }}>Register</a>
+{% endif %}
+</div>
+{% endblock %}
+{% endraw %}

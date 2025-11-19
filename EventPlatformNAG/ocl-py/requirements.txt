@@ -1,0 +1,12 @@
+# This file is used by pip to install required python packages
+# Usage: pip install -r requirements.txt
+pytest==7.2.0
+
+# Antlr parser
+antlr4-python3-runtime==4.13.0
+antlr4-tools==0.2
+
+# CPython modifier
+forbiddenfruit==0.1.4
+
+
