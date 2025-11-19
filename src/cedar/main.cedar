@@ -1,42 +1,9 @@
-
-// TODO add contextual check principal.active in all policies
 permit (
     principal is Person,
     action == Action::"readPerson",
     resource is Person
 ) when {
     principal in Role::"ADMIN" || principal == resource
-};
-
-permit (
-    principal is Person,
-    action == Action::"readLog",
-    resource is Log
-) when {
-    principal in Role::"ADMIN" || resource.user == principal
-};
-
-permit (
-    principal is Person in Role::"ADMIN",
-    action == Action::"readAllLogs",
-    resource is LogContainer
-);
-
-permit (
-    principal is Person,
-    action == Action::"readEventRequesters",
-    resource is Event
-) when {
-    principal.username == context.requesterusr || principal in Role::"ADMIN"
-};
-
-
-permit (
-    principal is Person,
-    action == Action::"readCategorySubscribers",
-    resource is Category
-) when {
-    principal in Role::"ADMIN" || resource.moderators.contains(principal)
 };
 
 permit (
@@ -81,11 +48,52 @@ permit (
     resource is Person
 );
 
+forbid (
+    principal is Person,
+    action == Action::"removeAttendant",
+    resource is Event
+) when {
+    resource.managedBy.contains(context.removedAttendant)
+};
+
+
+permit (
+    principal is Person,
+    action == Action::"removeAttendant",
+    resource is Event
+) when {
+    principal in Role::"ADMIN" ||  resource.managedBy.contains(principal) || principal == context.removedAttendant
+};
+
+permit (
+    principal is Person,
+    action == Action::"readEventRequesters",
+    resource is Event
+) when {
+    principal.username == context.requesterusr || principal in Role::"ADMIN"
+};
+
 permit (
     principal is Person in Role::"ADMIN",
-    action == Action::"updateCategory",
-    resource is Category
+    action == Action::"readAllLogs",
+    resource is LogContainer
 );
+
+permit (
+    principal is Person,
+    action == Action::"readLog",
+    resource is Log
+) when {
+    principal in Role::"ADMIN" || resource.user == principal
+};
+
+permit (
+    principal is Person,
+    action == Action::"readCategorySubscribers",
+    resource is Category
+) when {
+    principal in Role::"ADMIN" || resource.moderators.contains(principal)
+};
 
 forbid (
     principal is Person,
@@ -111,26 +119,31 @@ permit (
     principal in Role::"ADMIN" || resource.owner == principal
 };
 
-forbid (
-    principal is Person,
-    action == Action::"removeAttendant",
-    resource is Event
-) when {
-    resource.managedBy.contains(context.removedAttendant)
-};
-
 permit (
-    principal is Person,
-    action == Action::"removeAttendant",
-    resource is Event
-) when {
-    principal in Role::"ADMIN" ||  resource.managedBy.contains(principal) || principal == context.removedAttendant
-};
+    principal is Person in Role::"ADMIN",
+    action == Action::"removeAd",
+    resource is Ad
+);
 
 permit (
     principal is Person in Role::"ADMIN",
     action == Action::"removeAd",
     resource is Ad
+);
+
+
+permit (
+    principal is Person,
+    action == Action::"removeCategoryModerator",
+    resource is Category
+) when {
+    principal in Role::"ADMIN" || context.removedModerator == principal
+};
+
+permit (
+    principal is Person in Role::"ADMIN",
+    action == Action::"addCategoryModerator",
+    resource is Category
 );
 
 permit (
@@ -143,25 +156,11 @@ permit (
 
 permit (
     principal is Person,
-    action == Action::"removeCategoryModerator",
-    resource is Category
-) when {
-    principal in Role::"ADMIN" || context.removedModerator == principal
-};
-
-permit (
-    principal is Person,
     action == Action::"addCategoryEvent",
     resource is Category
 ) when {
     principal in Role::"ADMIN" || context.eventmanagers.contains(principal)
 };
-
-permit (
-    principal is Person in Role::"ADMIN",
-    action == Action::"addCategoryModerator",
-    resource is Category
-);
 
 permit (
     principal is Person,
@@ -185,3 +184,6 @@ permit (
     action == Action::"analyze",
     resource is Event
 );
+
+
+

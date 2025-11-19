@@ -33,7 +33,7 @@ with open(POLICY_PATH, "r", encoding="utf-8") as policy_file:
             schema = schema_file.read()
     except FileNotFoundError:
         schema = None
-    cedar = CedarClient(policies, serializer, None, verbose = True)
+    cedar = CedarClient(policies, serializer, schema, verbose = True)
 
 """
 Define your privacy input here. 
@@ -266,8 +266,8 @@ def profile():
         return {'user': PersonDTO.copy(current_user), 'ad': None}
     
     ad_permission = (
-    has_consent(current_user, "Person", ["gender"], [TargetedMarketingPurpose, MarketingPurpose, AnyPurpose])
-    and has_consent(current_user, "Person", ["name"], [MarketingPurpose, AnyPurpose])
+    check_access_consent(current_user, "Person", "gender", [TargetedMarketingPurpose, MarketingPurpose, AnyPurpose])
+    and check_access_consent(current_user, "Person", "name", [MarketingPurpose, AnyPurpose])
     )
     user_dto = _serialize_user(current_user, ["subscriptions"])
     ad = get_personalize_ad(user_dto) if ad_permission else None
@@ -300,7 +300,7 @@ def update_user():
             user.gender = new_gender
         # Updating user's role if it has changed
         if user.role.name != request.form["role"]:
-            if check_cedar_permission(_caller=current_user, action="updateUserRole", resource=user):
+            if check_cedar_permission(_caller=current_user, _action="updateUserRole", _resource=user):
                 user.role = Role.query.filter_by(name=request.form["role"]).first()
         db.session.commit()
         return request.form["id"]
@@ -743,7 +743,7 @@ def send_mass_advertisement(id):
         db.session.rollback()
         raise se
 
-        
+
 def analyze(id):
     try:
         if not current_user.is_authenticated:
