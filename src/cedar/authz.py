@@ -73,7 +73,6 @@ class EntitySerializer:
 
         Returns complete entity with UID, attributes, and parents
         """
-        # TODO unwrap local_proxy in Person if current_user is wrapped in local_proxy for threat-bound handling 
         attributes = {}
         mapper = inspect(subject).mapper
 
@@ -112,21 +111,7 @@ class EntitySerializer:
                     continue
                 seen_roles.add(normalized)
                 append_parent({"type": "Role", "id": normalized})
-        ## events do not have attribute for the category they are in but category does
-        # TODO add more relationships if necessary
-        # elif cedar_type == "Event":
-        #     categories = getattr(subject, "categories", None) or []
-        #     seen_categories: set[str] = set()
-        #     append_parent = parents.append
-        #     for category in categories:
-        #         name = getattr(category, "name", None)
-        #         if not name:
-        #             continue
-        #         normalized = str(name).strip()
-        #         if not normalized or normalized in seen_categories:
-        #             continue
-        #         seen_categories.add(normalized)
-        #         append_parent({"type": "Category", "name": normalized})
+
 
         return {
             "uid": {"type": cedar_type, "id": object_id},

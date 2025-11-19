@@ -189,3 +189,13 @@ action analyze appliesTo {
     principal: Person,
     resource: Event
 };
+
+action updateCategory appliesTo {
+    principal: Person,
+    resource: Category
+};
+
+action moderatorReadEmail appliesTo {
+    principal: Person,
+    resource: Person
+};

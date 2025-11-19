@@ -31,7 +31,7 @@ permit (
     action == Action::"updateEvent",
     resource is Event
 ) when {
-    principal in Role::"ADMIN" || resource.managedBy.contains(principal)
+    principal in Role::"ADMIN" || resource.managedBy.contains(principal) || resource.owner == principal
 };
 
 permit (
@@ -62,7 +62,7 @@ permit (
     action == Action::"removeAttendant",
     resource is Event
 ) when {
-    principal in Role::"ADMIN" ||  resource.managedBy.contains(principal) || principal == context.removedAttendant
+    principal in Role::"ADMIN" || resource.managedBy.contains(principal) || resource.owner == principal || principal == context.removedAttendant
 };
 
 permit (
@@ -126,13 +126,6 @@ permit (
 );
 
 permit (
-    principal is Person in Role::"ADMIN",
-    action == Action::"removeAd",
-    resource is Ad
-);
-
-
-permit (
     principal is Person,
     action == Action::"removeCategoryModerator",
     resource is Category
@@ -167,7 +160,7 @@ permit (
     action in [Action::"acceptRequest", Action::"rejectRequest"],
     resource is Event
 ) when {
-    principal in Role::"ADMIN" ||  resource.managedBy.contains(principal)
+    principal in Role::"ADMIN" ||  resource.managedBy.contains(principal) || resource.owner == principal
 };
 
 // user can reject(retire) its own request 
@@ -185,5 +178,17 @@ permit (
     resource is Event
 );
 
+permit (
+    principal is Person in Role::"ADMIN",
+    action == Action::"updateCategory",
+    resource is Category
+);
 
+permit (
+    principal is Person in Role::"MODERATOR",
+    action == Action::"moderatorReadEmail",
+    resource is Person
+) when {
+    resource.subscriptions.containsAny(principal.moderates)
+};
 
