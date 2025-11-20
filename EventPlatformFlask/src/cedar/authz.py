@@ -1,13 +1,42 @@
+import datetime
 from enum import Enum
+from types import NoneType
 import cedarpy
 from typing import Any, Callable, TypeAlias, TypeVar
+
+from sqlalchemy import null
+from sqlalchemy import inspect
+from model import db, REGULARUSER, PREMIUMUSER, MODERATOR, ADMIN
+
+
+ROLE_ORDER: tuple[str, ...] = (REGULARUSER, PREMIUMUSER, MODERATOR, ADMIN)
+
+
+def _build_role_entities() -> list[dict[str, Any]]:
+    """
+    Emit the linear role hierarchy:
+    REGULARUSER <- PREMIUMUSER
+    PREMIUMUSER <- MODERATOR
+    PREMIUMUSER <- ADMIN
+    """
+    entities: list[dict[str, Any]] = []
+    for _, role in enumerate(ROLE_ORDER):
+        parents = []
+        if role == PREMIUMUSER:
+            parents.append({"type": "Role", "id": REGULARUSER})
+        elif role in (MODERATOR, ADMIN):
+            parents.append({"type": "Role", "id": PREMIUMUSER})
+        entities.append({"uid": {"type": "Role", "id": role}, "attrs": {}, "parents": parents})
+    return entities
 
 
 class SecurityException(Exception):
     """Exception raised when an action is not authorized by security policy"""
 
-    def __init__(self, msg):
+    def __init__(self, msg, page='sec_error.html', params=None):
         self.msg = msg
+        self.page = page
+        self.params = params or {}
 
 
 class EntitySerializer:
@@ -23,7 +52,20 @@ class EntitySerializer:
         Format: `EntityType::"object_id"`
         Example: `User::"123"` or `Document::"456"`
         """
-        return ...    # TODO
+        identifier = getattr(subject, "id", getattr(subject, "name", None))
+        if identifier is None:
+            raise ValueError(f"Cannot generate identifier for {subject}")
+
+        return f"{subject.__class__.__name__}::\"{str(identifier).strip()}\""
+
+
+    def action_reference(self, action: str) -> str:
+        """
+        Convert action string to Cedar action reference
+
+        Ensures action has proper `Action::` prefix for Cedar
+        """
+        return f'Action::"{action}"' if not action.startswith("Action::") else action
 
     def entity_json(self, subject: object) -> dict[str, Any]:
         """
@@ -31,15 +73,90 @@ class EntitySerializer:
 
         Returns complete entity with UID, attributes, and parents
         """
-        cedar_type = ...    # TODO
-        object_id = ...     # TODO
-        attributes = {...}  # TODO
-        parents = [...]     # TODO
+        attributes = {}
+        mapper = inspect(subject).mapper
+
+        for attr in mapper.column_attrs + mapper.relationships:
+            k = attr.key
+            if k in ["id", "_sa_instance_state", "password", "roles", "logs"]:
+                continue
+            v = getattr(subject, k)
+            
+            if isinstance(v, list):
+                serialized_value = self._serialize_attribute_values(v)
+                # if not len(serialized_value) == 0:
+                # attributes[k] = serialized_value
+
+            else: 
+                serialized_value = self._serialize_attribute_value(v)
+                if serialized_value is None and k in ["email", "gender", "name", "surname"]:
+                    serialized_value = ""
+                # if serialized_value is not None:
+            
+            attributes[k] = serialized_value
+        
+        cedar_type = subject.__class__.__name__
+        object_id = str(getattr(subject, "id", getattr(subject, "name", None)))
+        parents: list[dict[str, Any]] = []
+        if cedar_type == "Person":
+            roles = getattr(subject, "roles", None) or []
+            seen_roles: set[str] = set()
+            append_parent = parents.append
+            for role in roles:
+                name = getattr(role, "name", None)
+                if not name:
+                    continue
+                normalized = str(name).strip()
+                if not normalized or normalized in seen_roles:
+                    continue
+                seen_roles.add(normalized)
+                append_parent({"type": "Role", "id": normalized})
+
 
         return {
             "uid": {"type": cedar_type, "id": object_id},
             "attrs": attributes,
             "parents": parents,
+        }
+
+
+
+    def _serialize_attribute_value(self, value: Any) -> Any | None:
+        # DONE here misssing handling of dict lists. both primitive types and classes
+        # list of primitive types --> return it, should be JSON encoded (?)
+        # list of instances of type db.Model _entity_pointer() for each
+        
+        # e.g. list of logs, requesters
+        if isinstance(value, (int, str, bool, datetime.datetime)):
+            return value
+        if isinstance(value, dict):
+            nested: dict[str, Any] = {}
+            for key, nested_value in value.items():
+                converted = self._serialize_attribute_value(nested_value)
+                if converted is not None:
+                    nested[key] = converted
+            return nested if nested else None
+
+        if isinstance(value, db.Model):
+            return self._entity_pointer(value)
+
+        return None
+    
+    def _serialize_attribute_values(self, values: list[Any]) -> Any | None:
+        serialized_values = []
+        for v in values:
+            serialized_values.append(self._serialize_attribute_value(v))
+        return serialized_values
+    
+    def _entity_pointer(self, subject: object) -> dict[str, Any]:
+        identifier = getattr(subject, "id", getattr(subject, "name", None))
+        if identifier is None:
+            identifier = str(subject)        
+        return {
+            "__entity" : {
+                "type": subject.__class__.__name__,
+                "id": str(identifier).strip()
+            }
         }
 
 
@@ -66,6 +183,7 @@ class CedarClient:
         self.serializer = serializer
         self.schema = schema
         self.verbose = verbose
+        self._static_entities = _build_role_entities()
 
     def is_authorized(
         self,
@@ -109,13 +227,19 @@ class CedarClient:
         # Serialize all entities if they are not dicts already
         entities_json = []
         for entity in entities:
-            if not isinstance(entity, dict):
-                entities_json.append(self.serializer.entity_json(entity))
+            if isinstance(entity, dict):
+                entities_json.append(entity)
+            else:
+                ent_json = self.serializer.entity_json(entity)
+                if ent_json not in entities_json:
+                    entities_json.append(ent_json)
+        # always add roles entities with hierarchy
+        entities_json.extend(self._static_entities)
 
         # Build and send authorization request
         request = {
             "principal": principal_uid,
-            "action": action,
+            "action": self.serializer.action_reference(action),
             "resource": resource_uid,
             "context": context,
         }
@@ -139,11 +263,11 @@ class CedarClient:
         result = self.is_authorized(principal, action, resource, context, entities)
         if result.decision == cedarpy.Decision.Deny:
             raise SecurityException(
-                f"Action '{action}' not allowed for {self.serializer.entity_reference(principal)} on {self.serializer.entity_reference(resource)}"
+                f"Action '{action}' not allowed for {principal if isinstance(principal, str) else self.serializer.entity_reference(principal)} on {resource if isinstance(resource, str) else self.serializer.entity_reference(resource)}", page='sec_error.html'
             )
         elif result.decision == cedarpy.Decision.NoDecision:
             raise SecurityException(
-                f"Failed to decide: action '{action}' for {self.serializer.entity_reference(principal)} on {self.serializer.entity_reference(resource)}\n{result.diagnostics.errors}"
+                f"Failed to decide: action '{action}' for {principal if isinstance(principal, str) else self.serializer.entity_reference(principal)} on {resource if isinstance(resource, str) else self.serializer.entity_reference(resource)}\n{result.diagnostics.errors}", page='sec_error.html'
             )
 
 
