@@ -234,7 +234,7 @@ def _serialize_user(user: Person, personal_data : list[str] = []):
 
     if not can_read_person:
         user_dto.password = RESTRICTED
-        if not (user.is_authenticated and check_cedar_permission(current_user, "moderatorReadEmail", user)):
+        if not (current_user.is_authenticated and check_cedar_permission(current_user, "moderatorReadEmail", user)):
             user_dto.email = RESTRICTED
         user_dto.gender = RESTRICTED
         user_dto.name = RESTRICTED
@@ -405,7 +405,6 @@ def _serialize_event(event):
             accessible_requests = event.requesters
         else:
             # cedar policy 'principal in Role::"ADMIN"'
-            has_consent(current_user, "Person", "role", [CorePurpose, FunctionalPurpose, AnyPurpose])
             for r in event.requesters:
                 if check_cedar_permission(
                     _caller=current_user,
@@ -615,7 +614,6 @@ def remove_attendee(id,e):
             )
         user = Person.query.get(id)
         event = Event.query.get(e)
-        has_consent(user, "Person", "role", [CorePurpose, FunctionalPurpose, AnyPurpose])
         cedar.assert_allowed(principal=current_user, action="removeAttendant", resource=event, context={"removedAttendant" : serializer._entity_pointer(subject=user)})
         if user in event.attendants:
             event.attendants.remove(user)
@@ -632,7 +630,6 @@ def accept_request(id,e):
             )
         user = Person.query.get(id)
         event = Event.query.get(e)
-        has_consent(user, "Person", "role", [CorePurpose, FunctionalPurpose, AnyPurpose])
         cedar.assert_allowed(principal=current_user, action="acceptRequest", resource=event)
         if user not in event.attendants:
             event.attendants.append(user)
@@ -651,7 +648,6 @@ def reject_request(id,e):
             )
         user = Person.query.get(id)
         event = Event.query.get(e)
-        has_consent(user, "Person", "role", [CorePurpose, FunctionalPurpose, AnyPurpose])
         cedar.assert_allowed(principal=current_user, action="rejectRequest", resource=event, context={"rejectedRequester" : serializer._entity_pointer(user)})
         event.requesters.remove(user)
         db.session.commit()
