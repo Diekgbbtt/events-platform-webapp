@@ -5,7 +5,7 @@ from application import app
 from flask import render_template, redirect, url_for, request, jsonify
 from flask_user import UserManager, user_registered, login_required, current_user
 from dtm import Person, Event, Category, Ad, Log, db
-from dtm import VISITOR, REGULARUSER, PREMIUMUSER, Role
+from dtm import VISITOR, REGULARUSER, PREMIUMUSER, MODERATOR, ADMIN, Role
 from dtm import Purpose, Consent, PersonalData
 from instrumentation import SecurityException, secure
 from ptm import EventPlatformNAGPrivacyModel
@@ -30,6 +30,8 @@ with app.app_context():
         db.session.add(Role(name=VISITOR))
         db.session.add(Role(name=REGULARUSER))
         db.session.add(Role(name=PREMIUMUSER))
+        db.session.add(Role(name=MODERATOR))
+        db.session.add(Role(name=ADMIN))
         db.session.commit()
 
     purposes = Purpose.query.all()

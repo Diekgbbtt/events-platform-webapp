@@ -23,6 +23,8 @@ UNAUTHENTICATED_ROLE = "VISITOR"
 VISITOR = "VISITOR"
 REGULARUSER = "REGULARUSER"
 PREMIUMUSER = "PREMIUMUSER"
+MODERATOR = "MODERATOR"
+ADMIN = "ADMIN"
 
 
 
@@ -461,6 +463,16 @@ with app.app_context():
         @property
         def PREMIUMUSER(cls):
             return cls._get_role('PREMIUMUSER')
+
+        @classmethod
+        @property
+        def MODERATOR(cls):
+            return cls._get_role('MODERATOR')
+
+        @classmethod
+        @property
+        def ADMIN(cls):
+            return cls._get_role('ADMIN')
 
         
     

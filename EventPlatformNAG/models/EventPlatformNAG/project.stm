@@ -46,10 +46,18 @@ default Role REGULARUSER extends VISITOR {
         read(logs) [self = caller]
         read(role)
         
-        add(logs) [self = caller] // TODO or Log.allInstances() -> collect(l|l.user = caller)
-        // question is for read actions do both association ends must be controlled
         add(events) [self = caller]
+        add(manages) [value.owner = caller]
+        add(attends) [value.managedBy->includes(caller) or value.owner = caller]
+        add(subscriptions) [self = caller]
         add(requests) [self = caller]
+        add(logs) [self = caller]
+
+        remove(manages) [value.owner = caller and value.owner = self]
+        remove(attends) [value.managedBy->includes(self) and value.managedBy->includes(caller) or value.owner = caller or self = caller]
+        remove(subscriptions) [self = caller]
+        remove(moderates) [self = caller]
+        remove(requests) [value.managedBy->includes(caller) or value.owner = caller or self = caller]
 
         update(name) [self = caller]
         update(surname) [self = caller]

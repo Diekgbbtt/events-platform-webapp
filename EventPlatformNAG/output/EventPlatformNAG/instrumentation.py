@@ -69,6 +69,8 @@ def get_context():
             'VISITOR': EventPlatformNAGSecurityModel.Role.VISITOR,
             'REGULARUSER': EventPlatformNAGSecurityModel.Role.REGULARUSER,
             'PREMIUMUSER': EventPlatformNAGSecurityModel.Role.PREMIUMUSER,
+            'MODERATOR': EventPlatformNAGSecurityModel.Role.MODERATOR,
+            'ADMIN': EventPlatformNAGSecurityModel.Role.ADMIN,
             }
         c = current_user if not current_user.is_anonymous else None
         r = c.role if not c is None else EventPlatformNAGSecurityModel.Role.VISITOR
