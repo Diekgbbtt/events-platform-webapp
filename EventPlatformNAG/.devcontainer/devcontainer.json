@@ -1,0 +1,27 @@
+{
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-vscode.vscode-json",
+        "ms-vscode.vscode-html-language-features",
+        "wholroyd.jinja",
+        "infsec.vscode-nag"
+      ],
+      "settings": {
+        "files.watcherExclude": {
+          "**/__pycache__/**": true,
+          "**/.git/objects/**": true,
+          "**/.git/subtree-cache/**": true,
+          "**/*.pyc": true,
+          "**/node_modules/*/**": true
+        },
+        "nag.server.pythonPath": "/opt/venv/bin/python"
+      }
+    }
+  },
+  "dockerComposeFile": "../docker-compose.yml",
+  "name": "NuActionGUI Development",
+  "service": "nag",
+  "workspaceFolder": "/app"
+}

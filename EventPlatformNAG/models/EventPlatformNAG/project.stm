@@ -1,0 +1,111 @@
+USER Person
+
+anonymous Role VISITOR {
+    Person {
+        fullAccess
+    }
+
+    Event {
+        fullAccess
+    }
+
+    Category {
+        fullAccess
+    }
+
+    Ad {
+        fullAccess
+    }
+
+    Log {
+        fullAccess
+    }
+}
+
+default Role REGULARUSER {
+    Person {
+        fullAccess
+    }
+
+    Event {
+        fullAccess
+    }
+
+    Category {
+        fullAccess
+    }
+
+    Ad {
+        fullAccess
+    }
+
+    Log {
+        fullAccess
+    }
+}
+
+Role PREMIUMUSER {
+    Person {
+        fullAccess
+    }
+
+    Event {
+        fullAccess
+    }
+
+    Category {
+        fullAccess
+    }
+
+    Ad {
+        fullAccess
+    }
+
+    Log {
+        fullAccess
+    }
+}
+
+Role MODERATOR {
+    Person {
+        fullAccess
+    }
+
+    Event {
+        fullAccess
+    }
+
+    Category {
+        fullAccess
+    }
+
+    Ad {
+        fullAccess
+    }
+
+    Log {
+        fullAccess
+    }
+}
+
+Role ADMIN {
+    Person {
+        fullAccess
+    }
+
+    Event {
+        fullAccess
+    }
+
+    Category {
+        fullAccess
+    }
+
+    Ad {
+        fullAccess
+    }
+
+    Log {
+        fullAccess
+    }
+}

@@ -1,0 +1,11 @@
+.DS_Store
+output/*
+.venv
+__pycache__
+.antlr
+*.interp
+*.tokens
+src/ocl/parser/*
+ocl_py.egg-info/
+ocl/parser/Ocl*.py
+.vscode/

@@ -1,0 +1,29 @@
+{% extends 'template.html' %}
+
+{% block content %}
+<div class="card-body">
+  <div class="card-text">
+    <form action="/login" method="post">
+      <div class="form-group mb-1">
+        <label for="username">Username</label> 
+        <input type="text" class="form-control" id="username_id" name="username">
+      </div>
+      <div class="form-group mb-1">
+        <label for="password">Password</label>
+        <input type="password" class="form-control" id="password_id" name="password">
+      </div>
+      <button type="submit" class="btn btn-primary">Login</button>
+      <button type="submit" class="btn btn-primary" formaction="/register">Register</button>
+    </form>
+    {% if wrong_pass %}
+    <span class="badge bg-danger">Incorrect username or password</span>
+    {% endif %}
+    {% if wrong_username %}
+    <span class="badge bg-danger">Incorrect username already exists</span>
+    {% endif %}
+    {% if invalid_input %}
+    <span class="badge bg-danger">The form contains errors</span>
+    {% endif %}            
+  </div>
+</div>
+{% endblock %}

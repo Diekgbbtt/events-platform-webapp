@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    
+    <link rel="stylesheet" href="/static/css/style.css">
+        
+    <title>Event Platform</title>
+    
+    <style>
+      body {
+        background-color: #f8f9fa;
+      }
+
+      #navbar {
+        background-color: #343a40;
+        color: white;
+      }
+
+      .navbar-brand {
+        color: white;
+        font-weight: bold;
+        font-size: 1.5rem;
+      }
+
+      .navbar-brand:hover {
+        color: #ffc107;
+      }
+
+      .card {
+        margin-top: 30px;
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        background-color: white;
+      }
+
+      .list-group-flush {
+        margin-top: 20px;
+      }
+
+      .badge-danger {
+        font-size: 1rem;
+        padding: 10px;
+        border-radius: 5px;
+      }
+
+      .privacy-banner {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: #343a40;
+        color: white;
+        padding: 15px;
+        text-align: center;
+        z-index: 1000;
+      }
+
+      .privacy-banner a {
+        color: #ffc107;
+        font-weight: bold;
+        text-decoration: underline;
+        margin-left: 5px;
+      }
+
+      .privacy-banner a:hover {
+        color: #fd7e14;
+      }
+
+      .modal-content {
+        border-radius: 10px;
+      }
+
+      .modal-header {
+        background-color: #343a40;
+        color: white;
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+      }
+
+      .modal-footer {
+        background-color: #f8f9fa;
+        border-bottom-left-radius: 10px;
+        border-bottom-right-radius: 10px;
+      }
+
+      .btn-close {
+        background-color: white;
+      }
+      
+      .btn-secondary {
+        background-color: #6c757d;
+        border: none;
+      }
+
+      .btn-secondary:hover {
+        background-color: #5a6268;
+      }
+    </style>
+  </head>
+  
+  <body>
+    <header class="navbar navbar-light" id="navbar">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+          Event Platform
+        </a>
+      </div>
+    </header>
+
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-8 offset-sm-2">
+          <div class="card">
+            {% block main %}{% endblock %}
+          </div>
+          <br/>
+          <div class="list-group list-group-flush">
+            {% if security_violation %}
+            <span class="badge bg-danger">{{ msg }}</span>
+            {% endif %}    
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="privacy-banner">
+      By using this site, you agree to our<a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal">Privacy Policy</a>.
+    </div>
+
+    <div class="modal fade" id="privacyModal" tabindex="-1" aria-labelledby="privacyModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="privacyModalLabel">Privacy Policy</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Your privacy is important to us. This privacy policy explains how we collect, use, and protect your personal data when you use our services.</p>
+            
+            <h6>Information We Collect</h6>
+            <p>We may collect the following types of personal information: name, contact information, usage data, and other details relevant to your interactions with our services.</p>
+            
+            <h6>
+              <a href="/consent-management" class="text-decoration-none text-dark">How We Manage Your Data and Consent</a>
+            </h6>
+            <p>We use your data for various purposes, including providing and improving our services, complying with legal obligations, and personalizing your experience. 
+              For more detailed information on how we manage your data and consent, please visit our <a href="/policy">Privacy Notice</a>.
+           </p>
+            <h6>Data Protection</h6>
+            <p>We implement appropriate technical and organizational measures to protect your personal data from unauthorized access, disclosure, alteration, or destruction.</p>
+            
+            <h6>Your Rights</h6>
+            <p>You have the right to access, correct, or delete your personal information. You may also object to or restrict certain processing of your data.</p>
+            
+            <h6>Changes to This Policy</h6>
+            <p>We may update this privacy policy from time to time. Please review this page periodically for the latest information on our privacy practices.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Bootstrap JS -->
+    <script type="text/javascript" src="/static/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

@@ -1,0 +1,12 @@
+<h2>Privacy policy</h2>
+
+<form method="POST">
+
+    <label>
+        <input type="checkbox" name="create_consent"
+               {% if has_consent(current_user, PersonalData.PERSON_CREATED, Purpose.ADD_NEW_THOUGHTS) %}checked{% endif %}>
+        I consent to linking my identity as the author to thoughts I create, for the purpose of creating new thoughts.
+    </label><br><br>
+
+    <input type="submit" value="Update">
+</form>

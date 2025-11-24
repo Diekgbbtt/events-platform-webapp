@@ -1,0 +1,13 @@
+services:
+  nag:
+    image: seceng-project-nag
+    build: .
+    platform: linux/amd64
+    container_name: seceng-project-nag
+    stdin_open: true
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - ./models:/app/models
+      - ./output:/app/output
+    restart: always

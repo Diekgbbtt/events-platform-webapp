@@ -1,0 +1,45 @@
+{% extends 'template.html' %}
+
+{% block content %}
+<h5 class="card-header">All Thoughts</h5>
+<div class="card-body">
+  <div class="card-text">
+    <table class="table">
+      <thead>
+        <tr><th>Creator</th><th>Votes</th><th>Thought</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for t in table %}
+      <tr><td>{{ t.createdBy.username }}</td><td>{{ t.votedBy | length }}</td><td>{{ t.content }}</td> 
+      <td>
+        <a href="{{ url_for('vote_thought', id=t.id) }}"><input type="submit" value="Vote" class="btn btn-primary"></a>
+        <a href="{{ url_for('delete_thought', id=t.id) }}"><input type="submit" value="Delete" class="btn btn-primary"></a>
+      </td>
+      </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="card-header">My Thought</div>
+<div class="card-body">
+  <div class="card-text">
+    <form action="/add_thought" method="post">
+      <div class="form-group mb-1">
+        <input type="text" name="thought" id="thought_id" placeholder="Type a thought here..." class="form-control">
+      </div>
+      <input type="submit" value="Publish it" class="btn btn-primary">
+      <input type="submit" value="Logout" formaction={{ url_for('user.logout') }} class="btn btn-secondary">
+    </form>
+    <br/>
+    <div class="list-group list-group-flush">
+      {% if invalid_input %}
+      <span class="badge bg-danger">Thought cannot be empty</span>
+      {% endif %}
+      {% if security_violation %}
+      <span class="badge bg-danger">{{ message }}</span>
+      {% endif %}    
+    </div>
+  </div>
+</div>
+{% endblock %}
