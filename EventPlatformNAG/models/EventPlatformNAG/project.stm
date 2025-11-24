@@ -2,7 +2,59 @@ USER Person
 
 anonymous Role VISITOR {
     Person {
-        fullAccess
+        read(name)
+        read(surname)
+        
+        add(logs) [self = caller]
+    }
+
+    Event {
+        read(title)
+        read(description)
+        read(owner)
+        read(categories)
+        read(attendants)
+        read(managedBy)
+    }
+
+    Category {
+        read(name)
+        read(events)
+        read(moderators)
+    }
+
+    Ad {
+        read(content)
+    }
+
+    Log {
+        update
+        create
+    }
+}
+
+default Role REGULARUSER extends VISITOR {
+    Person {
+        read(gender)
+        read(email)
+        read(events) [self = caller]
+        read(manages) [self = caller]
+        read(attends) [self = caller]
+        read(subscriptions) [self = caller]
+        read(moderates) [self = caller]
+        read(requests) [self = caller]
+        read(logs) [self = caller]
+        read(role)
+        
+        add(logs) [self = caller] // TODO or Log.allInstances() -> collect(l|l.user = caller)
+        // question is for read actions do both association ends must be controlled
+        add(events) [self = caller]
+        add(requests) [self = caller]
+
+        update(name) [self = caller]
+        update(surname) [self = caller]
+        update(email) [self = caller]
+        update(gender) [self = caller]
     }
 
     Event {
@@ -18,11 +70,13 @@ anonymous Role VISITOR {
     }
 
     Log {
-        fullAccess
+        read [self.user = caller]
+        update
+        create
     }
 }
 
-default Role REGULARUSER {
+Role PREMIUMUSER extends REGULARUSER {
     Person {
         fullAccess
     }
@@ -44,7 +98,7 @@ default Role REGULARUSER {
     }
 }
 
-Role PREMIUMUSER {
+Role MODERATOR extends PREMIUMUSER {
     Person {
         fullAccess
     }
@@ -66,29 +120,7 @@ Role PREMIUMUSER {
     }
 }
 
-Role MODERATOR {
-    Person {
-        fullAccess
-    }
-
-    Event {
-        fullAccess
-    }
-
-    Category {
-        fullAccess
-    }
-
-    Ad {
-        fullAccess
-    }
-
-    Log {
-        fullAccess
-    }
-}
-
-Role ADMIN {
+Role ADMIN extends PREMIUMUSER {
     Person {
         fullAccess
     }
