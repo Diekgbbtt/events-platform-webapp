@@ -35,16 +35,16 @@ anonymous Role VISITOR {
 
 default Role REGULARUSER extends VISITOR {
     Person {
-        read(gender)
-        read(email)
-        read(events) [self = caller]
-        read(manages) [self = caller]
-        read(attends) [self = caller]
+        read(gender) [self = caller]
+        read(email) [self = caller or self.subscriptions->union(caller.moderates)->size()>=1]
+        read(role)
+        read(events)
+        read(manages)
+        read(attends)
         read(subscriptions) [self = caller]
         read(moderates) [self = caller]
         read(requests) [self = caller]
         read(logs) [self = caller]
-        read(role)
         
         add(events) [self = caller]
         add(manages) [value.owner = caller]
@@ -66,21 +66,45 @@ default Role REGULARUSER extends VISITOR {
     }
 
     Event {
-        fullAccess
+
+        create [Event.allInstances()->select(e|e.owner = caller)->size()<5]
+        
+        read(requesters) [self.owner = caller or self.managedBy->includes(caller)]
+
+        update(title) [self.owner = null or self.owner = caller or self.managedBy->includes(caller)]
+        update(description) [self.owner = null or self.owner = caller or self.managedBy->includes(caller)]
+        update(owner) [self.owner = null]
+
+        add(managedBy) [self.owner = caller]
+        add(attendants) [self.owner = caller or self.managedBy->includes(caller)]
+        add(categories) [self.owner = caller or self.managedBy->includes(caller)]
+        add(requesters) [value = caller]
+        add(logs) [value.user = caller]
+
+        remove(managedBy) [value <> self.owner and self.owner = caller or value = caller]
+        remove(attendants) [value <> self.owner and not self.managedBy->includes(caller) and self.owner = caller or self.managedBy->includes(caller) or value = caller]
+        remove(categories) [self.owner = caller or self.managedBy->includes(caller) or value.moderators->includes(caller)]
+        remove(requesters) [value = caller or self.owner = caller or self.managedBy->includes(caller)]
+        
+        delete [self.owner = caller]
     }
 
     Category {
-        fullAccess
+        create
+        update
+        read(subscribers) [self.subscribers->select(s|s = caller)]
+        
+        add(subscribers) [value = caller]
+        add(events) [value.owner = caller or value.managedBy->includes(caller)]
+
+        remove(subscribers) [value = caller]
+        add(events) [value.owner = caller or value.managedBy->includes(caller)]
     }
 
-    Ad {
-        fullAccess
-    }
+    Ad {}
 
     Log {
         read [self.user = caller]
-        update
-        create
     }
 }
 
