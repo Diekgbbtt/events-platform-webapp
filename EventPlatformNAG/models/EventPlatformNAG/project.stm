@@ -28,15 +28,17 @@ anonymous Role VISITOR {
     }
 
     Log {
-        update
         create
+
+        update(user) [value = null]
+        update(timestamp) [not Log::allInstances().isEmpty() and Log::allInstances()->asSequence()->last()<value]
     }
 }
 
 default Role REGULARUSER extends VISITOR {
     Person {
         read(gender) [self = caller]
-        read(email) [self = caller or self.subscriptions->union(caller.moderates)->size()>=1]
+        read(email) [self = caller or not self.subscriptions->isEmpty() and not caller.moderates->isEmpty() and self.subscriptions->exists(s|s.moderators->includes(caller))]
         read(role)
         read(events)
         read(manages)
@@ -60,6 +62,7 @@ default Role REGULARUSER extends VISITOR {
         remove(requests) [value.managedBy->includes(caller) or value.owner = caller or self = caller]
 
         update(name) [self = caller]
+        update(role) [self = caller]
         update(surname) [self = caller]
         update(email) [self = caller]
         update(gender) [self = caller]
@@ -73,7 +76,7 @@ default Role REGULARUSER extends VISITOR {
 
         update(title) [self.owner = null or self.owner = caller or self.managedBy->includes(caller)]
         update(description) [self.owner = null or self.owner = caller or self.managedBy->includes(caller)]
-        update(owner) [self.owner = null]
+        update(owner) [self.owner = null and value = caller]
 
         add(managedBy) [self.owner = caller]
         add(attendants) [self.owner = caller or self.managedBy->includes(caller)]
@@ -90,14 +93,12 @@ default Role REGULARUSER extends VISITOR {
     }
 
     Category {
-        create
-        update
-        read(subscribers) [self.subscribers->select(s|s = caller)]
-        
+        read(subscribers) [self.moderators->includes(caller)]
+
         add(subscribers) [value = caller]
         add(events) [value.owner = caller or value.managedBy->includes(caller)]
 
-        remove(subscribers) [value = caller]
+        remove(subscribers) [value = caller or self.moderators->includes(caller)]
         add(events) [value.owner = caller or value.managedBy->includes(caller)]
     }
 
