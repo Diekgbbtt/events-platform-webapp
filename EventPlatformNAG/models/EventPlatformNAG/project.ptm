@@ -1,15 +1,54 @@
 Personal data {
 
+    Person.name,
+    Person.surname,
+    Person.role,
+    Person.gender,
+    Person.email,
+    Person.subscriptions,
+    Person.logs,
+
+    Log.event
 }
 
 Purposes {
 
+    ANY includes MARKETING includes TARGETED_MARKETING, MASS_MARKETING, ANALYTICS, FUNCTIONAL includes RECOMMEND_EVENTS, CORE
+
+       
 }
+
 
 Actual purposes {
 
 }
 
 Declared purposes {
+    
+    Person.name ANY,
+    Person.surname ANY,
+    Person.role ANY,
+    Person.gender ANY,
+    Person.email ANY,
+    Person.subscriptions ANY,
+    Person.logs ANY,
+    Log.event ANY,
+    
+    Person.name MARKETING,
+    Person.gender TARGETED_MARKETING,
+    Person.email MASS_MARKETING,
+
+    Person.gender ANALYTICS,
+
+    Log.event FUNCTIONAL,
+    Person.subscriptions [true] <ll> RECOMMEND_EVENTS,
+    Person.logs RECOMMEND_EVENTS,
+    Person.name CORE,
+    Person.surname CORE,
+    Person.role CORE,
+    Person.gender CORE,
+    Person.email CORE,
+    Person.subscriptions CORE,
+    Person.logs CORE
 
 }
