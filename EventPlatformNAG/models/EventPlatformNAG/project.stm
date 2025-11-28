@@ -31,14 +31,15 @@ anonymous Role VISITOR {
         create
 
         update(user) [value = null]
-        update(timestamp) [not Log::allInstances().isEmpty() and Log::allInstances()->asSequence()->last()<value]
+        update(event)
+        update(timestamp) [Log::allInstances().isEmpty() or Log::allInstances()->asSequence()->last().timestamp<value]
     }
 }
 
 default Role REGULARUSER extends VISITOR {
     Person {
         read(gender) [self = caller]
-        read(email) [self = caller or not self.subscriptions->isEmpty() and not caller.moderates->isEmpty() and self.subscriptions->exists(s|s.moderators->includes(caller))]
+        read(email) [self = caller]
         read(role)
         read(events)
         read(manages)
@@ -48,7 +49,7 @@ default Role REGULARUSER extends VISITOR {
         read(requests) [self = caller]
         read(logs) [self = caller]
         
-        add(events) [self = caller]
+        add(events) [value.owner = self or value.owner = null]
         add(manages) [value.owner = caller]
         add(attends) [value.managedBy->includes(caller) or value.owner = caller]
         add(subscriptions) [self = caller]
@@ -60,6 +61,7 @@ default Role REGULARUSER extends VISITOR {
         remove(subscriptions) [self = caller]
         remove(moderates) [self = caller]
         remove(requests) [value.managedBy->includes(caller) or value.owner = caller or self = caller]
+        remove(events) [value.owner = null]
 
         update(name) [self = caller]
         update(role) [self = caller]
@@ -78,9 +80,9 @@ default Role REGULARUSER extends VISITOR {
         update(description) [self.owner = null or self.owner = caller or self.managedBy->includes(caller)]
         update(owner) [self.owner = null and value = caller]
 
-        add(managedBy) [self.owner = caller]
-        add(attendants) [self.owner = caller or self.managedBy->includes(caller)]
-        add(categories) [self.owner = caller or self.managedBy->includes(caller)]
+        add(managedBy) [self.owner = null or self.owner = caller]
+        add(attendants) [self.owner = null or self.owner = caller or self.managedBy->includes(caller)]
+        add(categories) [self.owner = null or self.owner = caller or self.managedBy->includes(caller)]
         add(requesters) [value = caller]
         add(logs) [value.user = caller]
 
@@ -93,77 +95,83 @@ default Role REGULARUSER extends VISITOR {
     }
 
     Category {
-        read(subscribers) [self.moderators->includes(caller)]
 
         add(subscribers) [value = caller]
         add(events) [value.owner = caller or value.managedBy->includes(caller)]
 
-        remove(subscribers) [value = caller or self.moderators->includes(caller)]
-        add(events) [value.owner = caller or value.managedBy->includes(caller)]
+        remove(events) [value.owner = caller or value.managedBy->includes(caller)]
     }
 
     Ad {}
 
     Log {
         read [self.user = caller]
+        update(user) [self.user = null]
     }
 }
 
 Role PREMIUMUSER extends REGULARUSER {
-    Person {
-        fullAccess
-    }
+    Person {}
 
     Event {
-        fullAccess
+        create
     }
 
-    Category {
-        fullAccess
-    }
+    Category {}
 
-    Ad {
-        fullAccess
-    }
+    Ad {}
 
-    Log {
-        fullAccess
-    }
+    Log {}
 }
 
 Role MODERATOR extends PREMIUMUSER {
     Person {
-        fullAccess
+        read(email) [not self.subscriptions->isEmpty() and not caller.moderates->isEmpty() and self.subscriptions->exists(s|s.moderators->includes(caller))]
     }
 
-    Event {
-        fullAccess
+    Event {    
+        add(categories) [self.owner = caller or self.managedBy->includes(caller) or not value.moderators->isEmpty() and value.moderators->includes(caller)]
+        remove(categories) [self.owner = caller or self.managedBy->includes(caller) or not caller.moderates->isEmpty() and value.moderators->includes(caller)]
     }
 
     Category {
-        fullAccess
+        read(subscribers) [self.moderators->includes(caller)]
+        
+        add(events) [value.owner = caller or value.managedBy->includes(caller) or self.moderators->includes(caller)]
+
+        remove(subscribers) [value = caller or self.moderators->includes(caller)]
+        remove(events) [value.owner = caller or value.managedBy->includes(caller) or self.moderators->includes(caller)]
+        remove(moderators) [value = caller]
     }
 
-    Ad {
-        fullAccess
-    }
+    Ad {}
 
-    Log {
-        fullAccess
-    }
+    Log {}
 }
 
 Role ADMIN extends PREMIUMUSER {
     Person {
-        fullAccess
+        read
+        read(logs)
+        update(role)
     }
 
     Event {
-        fullAccess
+        add(categories)
+        remove(categories)
+
+        read(logs)
     }
 
     Category {
-        fullAccess
+        create
+        read
+        update
+        delete
+
+        add(moderators)
+        
+        remove(moderators)
     }
 
     Ad {
@@ -171,6 +179,6 @@ Role ADMIN extends PREMIUMUSER {
     }
 
     Log {
-        fullAccess
+        read
     }
 }
