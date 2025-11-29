@@ -6,7 +6,7 @@ from flask import render_template, redirect, url_for, request, jsonify
 from flask_user import UserManager, user_registered, login_required, current_user
 from dtm import Person, Event, Category, Ad, Log, db
 from dtm import VISITOR, REGULARUSER, PREMIUMUSER, MODERATOR, ADMIN, Role
-from dtm import Purpose, Consent, PersonalData
+from dtm import RECOMMEND_EVENTS, CORE, FUNCTIONAL, ANALYTICS, TARGETED_MARKETING, MASS_MARKETING, MARKETING, ANY, Purpose, Consent, PersonalData
 from instrumentation import SecurityException, secure
 from ptm import EventPlatformNAGPrivacyModel
 import logging
@@ -36,10 +36,49 @@ with app.app_context():
 
     purposes = Purpose.query.all()
     if len(purposes) == 0:
+        db.session.add(Purpose(name=RECOMMEND_EVENTS))
+        db.session.add(Purpose(name=CORE))
+        db.session.add(Purpose(name=FUNCTIONAL))
+        db.session.add(Purpose(name=ANALYTICS))
+        db.session.add(Purpose(name=TARGETED_MARKETING))
+        db.session.add(Purpose(name=MASS_MARKETING))
+        db.session.add(Purpose(name=MARKETING))
+        db.session.add(Purpose(name=ANY))
+        db.session.commit()
+        p = Purpose.query.filter_by(name=RECOMMEND_EVENTS).first()
+        db.session.commit()
+        p = Purpose.query.filter_by(name=CORE).first()
+        db.session.commit()
+        p = Purpose.query.filter_by(name=FUNCTIONAL).first()
+        p.subpurposes.append(Purpose.query.filter_by(name=RECOMMEND_EVENTS).first())
+        p.subpurposes.append(Purpose.query.filter_by(name=CORE).first())
+        db.session.commit()
+        p = Purpose.query.filter_by(name=ANALYTICS).first()
+        db.session.commit()
+        p = Purpose.query.filter_by(name=TARGETED_MARKETING).first()
+        db.session.commit()
+        p = Purpose.query.filter_by(name=MASS_MARKETING).first()
+        db.session.commit()
+        p = Purpose.query.filter_by(name=MARKETING).first()
+        p.subpurposes.append(Purpose.query.filter_by(name=TARGETED_MARKETING).first())
+        p.subpurposes.append(Purpose.query.filter_by(name=MASS_MARKETING).first())
+        db.session.commit()
+        p = Purpose.query.filter_by(name=ANY).first()
+        p.subpurposes.append(Purpose.query.filter_by(name=FUNCTIONAL).first())
+        p.subpurposes.append(Purpose.query.filter_by(name=ANALYTICS).first())
+        p.subpurposes.append(Purpose.query.filter_by(name=MARKETING).first())
         db.session.commit()
         
     personaldata = PersonalData.query.all()
     if len(personaldata) == 0:
+        db.session.add(PersonalData(resource='Person', subresource='name'))
+        db.session.add(PersonalData(resource='Person', subresource='surname'))
+        db.session.add(PersonalData(resource='Person', subresource='role'))
+        db.session.add(PersonalData(resource='Person', subresource='gender'))
+        db.session.add(PersonalData(resource='Person', subresource='email'))
+        db.session.add(PersonalData(resource='Person', subresource='subscriptions'))
+        db.session.add(PersonalData(resource='Person', subresource='logs'))
+        db.session.add(PersonalData(resource='Log', subresource='event'))
         db.session.commit()
 
     def P(ls):
@@ -146,31 +185,31 @@ def error():
     return render_template('error.html', message = msg)
 
 @app.route('/')
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def main():
     from project import main 
     return main(request)
 
 @app.route('/users', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def users():
     return Person.users(request)
 
 
 @app.route('/user', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def user():
     return Person.user(request)
 
 
 @app.route('/profile', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def profile():
     return Person.profile(request)
 
 
 @app.route('/update_user', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def update_user():
     return Person.update_user(request)
 
@@ -200,13 +239,13 @@ def remove_moderator():
 
 
 @app.route('/subscribe', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def subscribe():
     return Person.subscribe(request)
 
 
 @app.route('/unsubscribe', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def unsubscribe():
     return Person.unsubscribe(request)
 
@@ -214,7 +253,7 @@ def unsubscribe():
 
 
 @app.route('/events', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def events():
     return Event.events(request)
 
@@ -226,7 +265,7 @@ def create_event():
 
 
 @app.route('/view_event', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE', 'FUNCTIONAL']))
 def view_event():
     return Event.view_event(request)
 
@@ -244,7 +283,7 @@ def update_event():
 
 
 @app.route('/manage_event', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def manage_event():
     return Event.manage_event(request)
 
@@ -286,7 +325,7 @@ def reject_request():
 
 
 @app.route('/analyze', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['ANALYTICS']))
 def analyze():
     return Event.analyze(request)
 
@@ -304,7 +343,7 @@ def create_category():
 
 
 @app.route('/view_category', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def view_category():
     return Category.view_category(request)
 
@@ -348,7 +387,7 @@ def remove_ad():
 
 
 @app.route('/logs', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def logs():
     return Log.logs(request)
 

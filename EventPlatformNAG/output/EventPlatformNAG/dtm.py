@@ -31,6 +31,14 @@ ADMIN = "ADMIN"
 # =========================
 # Purpose Constants
 # =========================
+RECOMMEND_EVENTS = "RECOMMEND_EVENTS"
+CORE = "CORE"
+FUNCTIONAL = "FUNCTIONAL"
+ANALYTICS = "ANALYTICS"
+TARGETED_MARKETING = "TARGETED_MARKETING"
+MASS_MARKETING = "MASS_MARKETING"
+MARKETING = "MARKETING"
+ANY = "ANY"
 
 
 
@@ -353,6 +361,9 @@ with app.app_context():
         def logs(self):    
             return Person.logsList(self, [x.logs for x in self.association_logs_user]) 
         
+        @property
+        def owner(self):
+            return self
         @property
         def role(self):
             return self.roles[0]
@@ -1008,6 +1019,12 @@ with app.app_context():
                 v = association_event_logs(logs=self,event=value)
                 db.session.add(v)
             
+        owner_id = db.Column(db.Integer, db.ForeignKey('person.id'))
+        owner = db.relationship('Person', foreign_keys=owner_id, backref='personal')
+        def __init__(self, **kwargs):
+            super(Log, self).__init__(**kwargs)
+            if current_user.is_authenticated:
+                self.owner=current_user
         
     
         @classmethod
