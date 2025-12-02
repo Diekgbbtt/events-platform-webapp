@@ -31,32 +31,49 @@ Purposes {
 
 Actual purposes {
 
-    Person.recommend_events RECOMMEND_EVENTS,
     
     main CORE,
 
     Person.user CORE,
-
     Person.users CORE,
+    Person.leave CORE,
     Person.profile CORE,
     Person.update_user CORE,
     Person.subscribe CORE,
     Person.unsubscribe CORE,
+    Person.recommend_events RECOMMEND_EVENTS,
     Person.send_advertisement_to_user MASS_MARKETING,
+    Person.add_moderator CORE,
+    Person.remove_moderator CORE,
 
     Event.events CORE,
     Event.view_event FUNCTIONAL,
-    Event.view_event CORE,
+
+    Event.edit_event CORE,
+    Event.update_event CORE,
     Event.manage_event CORE,
+    Event.create_event CORE,
     Event.analyze ANALYTICS,
-    
+    Event.remove_attendee CORE,
+    Event.accept_request CORE,
+    Event.reject_request CORE,
+    Event.remove_category CORE,
+    Event.promote_manager CORE,
+    Event.demote_manager CORE,
+
+    Category.send_mass_advertisement MASS_MARKETING,
+    Category.categories CORE,
+    Category.create_category CORE,
     Category.view_category CORE,
+    Category.edit_category CORE,
+    Category.update_category CORE,
     Category.get_candidates CORE,
 
-    Log.logs CORE,
+    Log.logs FUNCTIONAL,
 
-    Ad.get_personalize_ad MARKETING,
-    Ad.get_personalize_ad TARGETED_MARKETING
+    Ad.get_personalize_ad TARGETED_MARKETING,
+    Ad.remove_ad CORE,
+    Ad.create_ad CORE
 
 }
 
@@ -69,7 +86,7 @@ Declared purposes {
     Person.email ANY,
     Person.subscriptions ANY,
     Person.logs ANY,
-    Log.event [self.user <> null] ANY, 
+    Log.event ANY,
     
     Person.name MARKETING,
     Person.gender MARKETING,
@@ -79,7 +96,8 @@ Declared purposes {
 
     Person.gender ANALYTICS,
 
-    Log.event [self.user <> null] FUNCTIONAL,
+    Log.event FUNCTIONAL,
+
     Person.name FUNCTIONAL,
     Person.surname FUNCTIONAL,
     Person.role FUNCTIONAL,

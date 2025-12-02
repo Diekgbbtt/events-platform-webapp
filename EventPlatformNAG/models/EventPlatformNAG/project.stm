@@ -5,7 +5,7 @@ anonymous Role VISITOR {
         read(name)
         read(surname)
         
-        add(logs) [self = caller]
+        add(logs) [self = caller and value.user = null]
     }
 
     Event {

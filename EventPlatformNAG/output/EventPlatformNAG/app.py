@@ -221,19 +221,19 @@ def join():
 
 
 @app.route('/leave', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def leave():
     return Person.leave(request)
 
 
 @app.route('/add_moderator', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def add_moderator():
     return Person.add_moderator(request)
 
 
 @app.route('/remove_moderator', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def remove_moderator():
     return Person.remove_moderator(request)
 
@@ -259,25 +259,25 @@ def events():
 
 
 @app.route('/create_event', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def create_event():
     return Event.create_event(request)
 
 
 @app.route('/view_event', methods=['POST', 'GET'])
-@secure(db,P(['CORE', 'FUNCTIONAL']))
+@secure(db,P(['FUNCTIONAL']))
 def view_event():
     return Event.view_event(request)
 
 
 @app.route('/edit_event', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def edit_event():
     return Event.edit_event(request)
 
 
 @app.route('/update_event', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def update_event():
     return Event.update_event(request)
 
@@ -289,37 +289,37 @@ def manage_event():
 
 
 @app.route('/remove_category', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def remove_category():
     return Event.remove_category(request)
 
 
 @app.route('/promote_manager', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def promote_manager():
     return Event.promote_manager(request)
 
 
 @app.route('/demote_manager', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def demote_manager():
     return Event.demote_manager(request)
 
 
 @app.route('/remove_attendee', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def remove_attendee():
     return Event.remove_attendee(request)
 
 
 @app.route('/accept_request', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def accept_request():
     return Event.accept_request(request)
 
 
 @app.route('/reject_request', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def reject_request():
     return Event.reject_request(request)
 
@@ -331,13 +331,13 @@ def analyze():
 
 
 @app.route('/categories', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def categories():
     return Category.categories(request)
 
 
 @app.route('/create_category', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def create_category():
     return Category.create_category(request)
 
@@ -349,19 +349,19 @@ def view_category():
 
 
 @app.route('/edit_category', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def edit_category():
     return Category.edit_category(request)
 
 
 @app.route('/update_category', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def update_category():
     return Category.update_category(request)
 
 
 @app.route('/send_mass_advertisement', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['MASS_MARKETING']))
 def send_mass_advertisement():
     return Category.send_mass_advertisement(request)
 
@@ -374,20 +374,20 @@ def ads():
 
 
 @app.route('/create_ad', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def create_ad():
     return Ad.create_ad(request)
 
 
 @app.route('/remove_ad', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def remove_ad():
     return Ad.remove_ad(request)
 
 
 
 @app.route('/logs', methods=['POST', 'GET'])
-@secure(db,P(['CORE']))
+@secure(db,P(['FUNCTIONAL']))
 def logs():
     return Log.logs(request)
 
