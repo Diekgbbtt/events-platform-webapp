@@ -16,6 +16,10 @@
   <a href="{{ url_for('user', id=user.id) }}">
     <input type="submit" value="My information" class="btn btn-secondary">
   </a>
+  <!-- New button for personalized statistics -->
+  <a href="{{ url_for('personalized_stats', id=user.id) }}">
+    <input type="submit" value="My statistics" class="btn btn-secondary">
+  </a>
 </div>
 
 <div class="card-header">My managed events:</div>
@@ -122,4 +126,34 @@
     </table>
   </div>
 </div>
+
+<div class="card-header">Invitations:</div>
+<div class="card-body">
+  <div style="overflow: scroll; height: 222px;"> 
+    <table id="invitesTbl" class="table table-striped table-bordered table-hover table-sm table-responsive" cellspacing="0" width="100%">
+      <thead>
+        <tr>
+          <th>Event title</th>
+          <th>Invited by</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in user.invitations %}
+        <tr>
+          <td>{{ u.event.title }}</td>
+          <td>{{ u.invitedBy.name }} {{ u.invitedBy.surname }}</td>
+          <td>
+            <a href="{{ url_for('accept_invitation', id=u.id) }}"><input type="submit"
+            value="Accept" class="btn btn-secondary"></a>
+            <a href="{{ url_for('decline_invitation', id=u.id) }}"><input type="submit"
+            value="Decline" class="btn btn-secondary"></a>  
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
 {% endblock %}

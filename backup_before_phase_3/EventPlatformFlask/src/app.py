@@ -23,9 +23,7 @@ PURPOSES = [
     AnalyticsPurpose,
     FunctionalPurpose,
     RecommendEventsPurpose,
-    CorePurpose,
-    InsightsPurpose,
-    StatsPurpose
+    CorePurpose
 ]
 
 ROLES = [
@@ -458,44 +456,3 @@ def grant_consent():
     else:
         return redirect(url_for('sec-error'))
     
-@app.route('/personalized_stats/<int:id>')
-@secure
-def personalized_stats(id):
-    from project import personalized_stats 
-    result=personalized_stats(id)
-    if type(result) == Response:
-        return result
-    else: 
-        return render_template('personalized_stats.html', **result)
-
-@app.route('/send_invite/<int:id>/<int:e>')
-@secure
-def send_invite(id,e):
-    from project import send_invite 
-    result=send_invite(id,e)
-    if type(result) == Response:
-        return result
-    else: 
-        return redirect(url_for('manage_event',id=e))
-
-
-@app.route('/accept_invitation/<int:id>')
-@secure
-def accept_invitation(id):
-    from project import accept_invitation 
-    result=accept_invitation(id)
-    if type(result) == Response:
-        return result
-    else: 
-        return redirect(url_for('profile'))
-
-
-@app.route('/decline_invitation/<int:id>')
-@secure
-def decline_invitation(id):
-    from project import decline_invitation 
-    result=decline_invitation(id)
-    if type(result) == Response:
-        return result
-    else: 
-        return redirect(url_for('profile'))

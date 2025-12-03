@@ -1,0 +1,23 @@
+{% extends 'backable.html' %}
+
+{% block content %}
+<h5 class="card-header">Personalized Statistics of {{ user.name }}</h5>
+
+<div class="card-body">
+  <ul class="list-group">
+    <li class="list-group-item">
+      <strong>Events Managed:</strong> {{ user.manages.__len__() }}
+    </li>
+    <li class="list-group-item">
+      <strong>Events Attended:</strong> {{ user.attends.__len__() }}
+    </li>
+    <li class="list-group-item">
+      <strong>Subscriptions:</strong> {{ user.subscriptions.__len__() }}
+    </li>
+    <li class="list-group-item">
+      <strong>Pending Invitations:</strong> {{ user.invitations.__len__() }}
+    </li>
+  </ul>
+</div>
+
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends 'backable.html' %}
+
+{% block content %}
+<h5 class="card-header">Events:</h5>
+<div class="card-body">
+  <div style="overflow: scroll; height: 222px;"> 
+    <table id="eventsTbl" class="table table-striped table-bordered table-hover table-sm table-responsive" cellspacing="0" width="100%">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Owner</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in events %}
+        <tr>
+          <td>{{ e.title }} </td>
+          <td>{{ e.owner.name }}</td>
+          <td>
+            <a href="{{ url_for('view_event', id=e.id) }}"><input type="submit" value="View"
+            class="btn btn-secondary"></a>
+            <a href="{{ url_for('join', id=e.id) }}"><input type="submit" value="Join" class="btn btn-secondary"></a>
+            <a href="{{ url_for('analyze', id=e.id) }}"><input type="submit" value="Analyze" class="btn btn-secondary"></a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card-header">Add new event:</div>
+<div class="card-body">
+  <div class="card-text">
+    <form method='post' action={{ url_for('create_event') }}>
+      <div class="form-group mb-1">
+        <label for="title" class="form-label">Title</label>
+        <input type="text" name="title" id="title" class="form-control">
+      </div>
+      <div class="form-group mb-1">
+        <label for="description" class="form-label">Description</label>
+        <input type="text" name="description" id="description" class="form-control">
+      </div>
+      <div class="form-group mb-1">
+      <label for="categories" class="form-label">Categories</label>
+      <select name="categories" id="categories" class="form-select" size="3" multiple>
+        {% for c in categories %}
+        <option style="width:100%;" value={{ c.id }}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+      </div>
+      <input type="submit" value="Create" class="btn btn-primary">
+    </form>
+  </div>
+</div>
+{% endblock %}

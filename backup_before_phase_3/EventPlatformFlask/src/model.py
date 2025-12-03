@@ -86,14 +86,6 @@ class Person(db.Model,UserMixin):
     def is_authenticated(self):
         return True
 
-class Invite(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    invitee_id = db.Column(db.Integer, db.ForeignKey('person.id'), nullable=False)
-    invitee = db.relationship('Person', foreign_keys=invitee_id, backref='invitations')
-    invitedBy_id = db.Column(db.Integer, db.ForeignKey('person.id'), nullable=False)
-    invitedBy = db.relationship('Person', foreign_keys=invitedBy_id, backref='invites')
-    event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False)
-    event = db.relationship('Event', foreign_keys=event_id, backref='invitations')
 
 class Role(db.Model):
     id = db.Column(db.Integer(), primary_key=True)

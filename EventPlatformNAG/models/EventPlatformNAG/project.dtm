@@ -10,7 +10,7 @@ entity Person {
   Set(Category) subscriptions oppositeTo subscribers
   Set(Category) moderates oppositeTo moderators
   Set(Event) requests oppositeTo requesters
-  Set(Log) logs oppositeTo user
+  Set(Log) logs oppositeTo user  
 
   @entry users()
   @entry user()
@@ -24,6 +24,11 @@ entity Person {
   @entry unsubscribe()
   recommend_events()
   send_advertisement_to_user()
+
+  Set(Invite) invitations oppositeTo invitee
+  Set(Invite) invites oppositeTo invitedBy
+
+  @entry personalized_stats()
 }
 
 entity Event {
@@ -50,6 +55,8 @@ entity Event {
   @entry accept_request()
   @entry reject_request()
   @entry analyze()
+
+  Set(Invite) invitations oppositeTo event
 }
 
 
@@ -83,4 +90,13 @@ entity Log {
   Event event oppositeTo logs  
 
   @entry logs()
+}
+
+entity Invite {
+  Person invitee oppositeTo invitations
+  Person invitedBy oppositeTo invites
+  Event event oppositeTo invitations
+  @entry send_invite()
+  @entry accept_invitation()
+  @entry decline_invitation()
 }

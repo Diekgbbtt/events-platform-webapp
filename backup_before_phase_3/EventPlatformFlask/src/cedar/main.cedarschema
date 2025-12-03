@@ -1,0 +1,201 @@
+
+entity EventsContainer;
+entity AdContainer;
+entity CategoriesContainer;
+
+entity Ad {
+    content: String
+};
+
+entity LogContainer;
+
+entity Role in Role;
+
+entity Category {
+    name: String,
+    subscribers: Set<Person>,
+    moderators: Set <Person>,
+    events: Set<Event>
+};
+
+entity Consent;
+
+entity Log {
+    timestamp: Long,
+    user_id: Long,
+    event_id: Long,
+    user: Person,
+    event: Event
+};
+
+entity Event {
+    title: String,
+    description: String,
+    person_id: Long,
+    owner: Person,
+    managedBy: Set<Person>,
+    attendants: Set<Person>,
+    requesters: Set<Person>,
+    categories: Set<Category>
+};
+
+entity Person in Role {
+    active: Bool,
+    name: String,
+    surname: String,
+    username: String,
+    gender: String,
+    email: String,
+    events: Set<Event>,
+    manages: Set<Event>,
+    attends: Set<Event>,
+    requests: Set<Event>,
+    subscriptions: Set<Category>,
+    moderates: Set<Category>,
+    consents: Set<Consent>
+};
+
+action addEvent appliesTo {
+    principal: Person,
+    resource: EventsContainer,
+    context: {
+        userEvents: Long
+    }
+};
+
+action addAd appliesTo {
+    principal: Person,
+    resource: AdContainer
+};
+
+action addCategory appliesTo {
+    principal: Person,
+    resource: CategoriesContainer
+};
+
+action updateEvent appliesTo {
+    principal: Person,
+    resource: Event
+};
+
+action updateUser appliesTo {
+    principal: Person,
+    resource: Person
+};
+
+action updateUserRole appliesTo {
+    principal: Person,
+    resource: Person
+};
+
+action readAllLogs appliesTo {
+    principal: Person,
+    resource: LogContainer
+};
+
+action readLog appliesTo {
+    principal: Person,
+    resource: Log
+};
+
+action readPerson appliesTo {
+    principal: Person,
+    resource: Person
+};
+
+action readCategorySubscribers appliesTo {
+    principal: Person,
+    resource: Category
+};
+
+action readEventRequesters appliesTo {
+    principal: Person,
+    resource: Event,
+    context: {
+        requesterusr: String
+    }
+};
+
+action removeAttendant appliesTo {
+    principal: Person,
+    resource: Event,
+    context: {
+        removedAttendant: Person
+    }
+};
+
+action removeCategoryEvent appliesTo {
+    principal: Person,
+    resource: Category,
+    context: {
+        eventmanagers: Set<Person>
+    }
+};
+
+action removeCategoryModerator appliesTo {
+    principal: Person,
+    resource: Category,
+    context: {
+        removedModerator: Person
+    }
+};
+
+action addCategoryEvent appliesTo {
+    principal: Person,
+    resource: Category,
+    context: {
+        eventmanagers: Set<Person>
+    }
+};
+
+action addCategoryModerator appliesTo {
+    principal: Person,
+    resource: Category
+};
+
+action removeAd appliesTo {
+    principal: Person,
+    resource: Ad
+};
+
+action demoteManager appliesTo {
+    principal: Person,
+    resource: Event,
+    context: {
+        demotedManager: Person
+    }
+};
+
+action promoteAttendant appliesTo {
+    principal: Person,
+    resource: Event
+};
+
+action acceptRequest appliesTo {
+    principal: Person,
+    resource: Event
+};
+
+
+action rejectRequest appliesTo {
+    principal: Person,
+    resource: Event,
+    context : {
+        rejectedRequester: Person
+    }
+};
+
+action analyze appliesTo {
+    principal: Person,
+    resource: Event
+};
+
+action updateCategory appliesTo {
+    principal: Person,
+    resource: Category
+};
+
+action moderatorReadEmail appliesTo {
+    principal: Person,
+    resource: Person
+};
