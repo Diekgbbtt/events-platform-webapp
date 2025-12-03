@@ -1,0 +1,102 @@
+entity Person {
+  String name
+  String surname
+  String gender
+  String email
+
+  Set(Event) events oppositeTo owner
+  Set(Event) manages oppositeTo managedBy
+  Set(Event) attends oppositeTo attendants
+  Set(Category) subscriptions oppositeTo subscribers
+  Set(Category) moderates oppositeTo moderators
+  Set(Event) requests oppositeTo requesters
+  Set(Log) logs oppositeTo user  
+
+  @entry users()
+  @entry user()
+  @entry profile()
+  @entry update_user()
+  @entry join()
+  @entry leave()
+  @entry add_moderator()
+  @entry remove_moderator()
+  @entry subscribe()
+  @entry unsubscribe()
+  recommend_events()
+  send_advertisement_to_user()
+
+  Set(Invite) invitations oppositeTo invitee
+  Set(Invite) invites oppositeTo invitedBy
+
+  @entry personalized_stats()
+}
+
+entity Event {
+  String title
+  String description
+
+  Person owner oppositeTo events
+  Set(Person) managedBy oppositeTo manages
+  Set(Person) attendants oppositeTo attends
+  Set(Category) categories oppositeTo events
+  Set(Person) requesters oppositeTo requests
+  Set(Log) logs oppositeTo event
+
+  @entry events()
+  @entry create_event()
+  @entry view_event()
+  @entry edit_event()
+  @entry update_event()
+  @entry manage_event()
+  @entry remove_category()
+  @entry promote_manager()
+  @entry demote_manager()
+  @entry remove_attendee()
+  @entry accept_request()
+  @entry reject_request()
+  @entry analyze()
+
+  Set(Invite) invitations oppositeTo event
+}
+
+
+entity Category {
+  String name
+
+  Set(Person) subscribers oppositeTo subscriptions
+  Set(Person) moderators oppositeTo moderates
+  Set(Event) events oppositeTo categories
+
+  @entry categories()
+  @entry create_category()
+  @entry view_category()
+  @entry edit_category()
+  @entry update_category()
+  @entry send_mass_advertisement()
+  get_candidates()
+}
+
+entity Ad {
+  String content
+  @entry ads()
+  @entry create_ad()
+  @entry remove_ad()
+  get_personalize_ad()
+}
+
+entity Log {
+  Integer timestamp
+  Person user oppositeTo logs
+  Event event oppositeTo logs  
+
+  @entry logs()
+}
+
+entity Invite {
+  Person invitee oppositeTo invitations
+  Person invitedBy oppositeTo invites
+  Event event oppositeTo invitations
+  @entry send_invite()
+  @entry accept_invitation()
+  @entry decline_invitation()
+}

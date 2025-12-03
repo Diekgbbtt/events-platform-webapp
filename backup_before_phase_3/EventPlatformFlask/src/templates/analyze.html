@@ -1,0 +1,13 @@
+{% extends 'backable.html' %}
+
+{% block content %}
+<div class="container">
+  <h2>Gender Distribution for Event: {{ event.name }}</h2>
+  <canvas id="genderChart" width="500" height="200" 
+          data-male="{{ male }}" 
+          data-female="{{ female }}" 
+          data-unknown="{{ unknown }}">
+  </canvas>
+</div>
+<script type="text/javascript" src="/static/js/genderChart.js"></script>
+{% endblock %}
