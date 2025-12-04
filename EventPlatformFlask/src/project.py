@@ -1,6 +1,6 @@
 from flask import request
 from flask_user import current_user, login_required
-from model import ADMIN, db, Person, Role, Event, Category, Purpose, Ad, Consent, AnyPurpose, FunctionalPurpose, MarketingPurpose, AnalyticsPurpose, CorePurpose, RecommendEventsPurpose, TargetedMarketingPurpose, MassMarketingPurpose, Log, MODERATOR
+from model import ADMIN, db, Person, Role, Event, Category, Purpose, Ad, Consent, AnyPurpose, FunctionalPurpose, MarketingPurpose, AnalyticsPurpose, CorePurpose, RecommendEventsPurpose, TargetedMarketingPurpose, MassMarketingPurpose, Log, MODERATOR, Invite, InsightsPurpose, StatsPurpose
 from dto import PersonDTO, EventDTO, CategoryDTO, RoleDTO, AdDTO, LogDTO, InviteDTO, RESTRICTED, _clear_cache
 import hashlib
 import random
@@ -17,7 +17,9 @@ PURPOSES = [
     CorePurpose, 
     RecommendEventsPurpose,
     TargetedMarketingPurpose, 
-    MassMarketingPurpose
+    MassMarketingPurpose,
+    InsightsPurpose, 
+    StatsPurpose
 ]
 
 # Setup Cedar
@@ -264,7 +266,33 @@ def _serialize_user(user: Person, personal_data : list[str] = []):
         user_dto.invites = []
         return user_dto
 
-    return _serialize_user_privacy(user, user_dto, personal_data)
+    user_dto = _serialize_user_privacy(user, user_dto, personal_data)
+
+    can_read_invitations = (
+        current_user.is_authenticated
+        and check_cedar_permission(
+            _caller=current_user,
+            _action="readPersonInvitations",
+            _resource=user,
+        )
+    )
+    user_dto.invitations = (
+        InviteDTO.copies(_authorized_invites(user.invitations)) if can_read_invitations else []
+    )
+
+    can_read_invites = (
+        current_user.is_authenticated
+        and check_cedar_permission(
+            _caller=current_user,
+            _action="readPersonInvites",
+            _resource=user,
+        )
+    )
+    user_dto.invites = (
+        InviteDTO.copies(_authorized_invites(user.invites)) if can_read_invites else []
+    )
+
+    return user_dto
 
 def _serialize_user_privacy(user: Person, user_dto: PersonDTO, personal_data : list[str] = []):
     for pd in personal_data or []:
@@ -336,6 +364,16 @@ def join(id):
             msg="not authenticated users can't request to join events", page="sec_error.html"
         )
     event = Event.query.get(id)
+    if current_user.id in [p.id for p in event.attendants]:
+        return
+    existing_invite = Invite.query.filter_by( # TODO embed in a cedar policy
+        event_id=event.id, invitee_id=current_user.id
+    ).first()
+    if existing_invite:
+        raise SecurityException(
+            msg="invited users cannot request to join the same event",
+            page="sec_error.html",
+        )
     if current_user.id not in [p.id for p in event.requesters]:
         p = Person.query.get(current_user.id)
         event.requesters.append(p)
@@ -414,6 +452,18 @@ def _restricted_person_dtos(people):
     return restricted
 
 
+def _authorized_invites(invites):
+    if not current_user.is_authenticated:
+        return []
+    authorized = []
+    for invite in invites or []:
+        if check_cedar_permission(
+            _caller=current_user, _action="readInvite", _resource=invite
+        ):
+            authorized.append(invite)
+    return authorized
+
+
 def _serialize_event(event):
     accessible_requests = []
     
@@ -435,6 +485,10 @@ def _serialize_event(event):
     managers_dto = _restricted_person_dtos(event.managedBy)
     attendants_dto = _restricted_person_dtos(event.attendants)
     
+    invitations_dto = []
+    if current_user.is_authenticated and check_cedar_permission(_caller=current_user, _action="readEventInvitations", _resource=event):
+        invitations_dto = InviteDTO.copies(_authorized_invites(event.invitations))
+
     event_dto = EventDTO(
         id=event.id,
         title=event.title,
@@ -445,6 +499,7 @@ def _serialize_event(event):
         attendants=attendants_dto,
         requesters=requesters_dto,
         logs=_serialize_logs(event.logs),
+        invitations=invitations_dto,
     )
     _clear_cache()
 
@@ -566,7 +621,18 @@ def update_event():
         raise se
 
 def manage_event(id):
-    event_dto = _serialize_event(Event.query.get(id))
+    if not current_user.is_authenticated:
+        raise SecurityException(
+            msg="manage event not allowed for not authenticated users",
+            page='sec_error.html'
+        )
+    event = Event.query.get(id)
+    cedar.assert_allowed(
+        principal=current_user,
+        action="readEventInvitations",
+        resource=event,
+    )
+    event_dto = _serialize_event(event)
     return {'event' : event_dto, 'users' : get_invite_candidates(event_dto)}
 
 
@@ -938,37 +1004,116 @@ def get_candidates(cat):
 
 # New code for phase 3 - ChangeRequest code
 
-from model import Invite, InsightsPurpose, StatsPurpose
-from dto import InviteDTO
 
 def personalized_stats(id):
-    user=Person.query.get(id)
-    user_dto=PersonDTO.copy(user)
+    if not current_user.is_authenticated:
+        raise SecurityException(
+            msg="personalized statistics not allowed for not authenticated users",
+            page='sec_error.html'
+        )
+    # TODO cathc and raise exception
+    user = Person.query.get(id)
+    cedar.assert_allowed(
+        principal=current_user,
+        action="viewPersonalizedStats",
+        resource=user,
+    )
+    user_dto = _serialize_user(user, ["name", "subscriptions"])
     return {'user' : user_dto}
 
 def send_invite(id,e):
-    user = Person.query.get(id)
-    event = Event.query.get(e)
-    invite = Invite(
-        event=event,
-        invitedBy=current_user,
-        invitee=user
-    )
-    db.session.add(invite)
-    db.session.commit()
+    try:
+        if not current_user.is_authenticated:
+            raise SecurityException(
+                msg="send invite not allowed for not authenticated users", page='sec_error.html'
+            )
+        user = Person.query.get(id)
+        event = Event.query.get(e)
+
+        # TODO redundant but ok for now to be removed
+        cedar.assert_allowed(
+            principal=current_user,
+            action="createInvite",
+            resource='InvitesContainer::"Global"'
+        )
+
+        invite = Invite()
+
+        if check_cedar_permission(_caller=current_user, _action="setInviteEvent", _resource=event):
+            invite = Invite(event=event)
+
+        if check_cedar_permission(_caller=current_user, _action="setInviteInvitedBy", _resource=invite):
+            invite.invitedBy = current_user
+
+        if check_cedar_permission(_caller=current_user, _action="setInviteInvitee", _resource=invite):
+            if not (user in [event.attendants + event.requesters]) and len(Invite.query.filter_by(event_id=event.id, invitee_id=user.id)) == 0:
+                invite.invitee = user   
+            else:
+                raise SecurityException(
+                    msg="users already inviting/requesting/attending cannot be invited",
+                    page='sec_error.html'
+                )
+
+        # TODO can commit empty invites due to nullable=false in the model -> do not raise an exception if logged in but don't actually persist the object if not manager and other contraints aren't respected
+        db.session.add(invite)
+        db.session.flush()
+        db.session.commit()
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
 
 def accept_invitation(id):
-    invite = Invite.query.get(id)
-    event = invite.event
-    user = invite.invitee
-    event.attendants.append(user)
-    db.session.delete(invite)
-    db.session.commit()
+    try:
+        if not current_user.is_authenticated:
+            raise SecurityException(
+                msg="accept invitation not allowed for not authenticated users",
+                page='sec_error.html'
+            )
+        invite = Invite.query.get(id)
+        if not invite:
+            raise SecurityException(msg="invitation not found", page='sec_error.html')
+        cedar.assert_allowed(
+            principal=current_user,
+            action="acceptInvite",
+            resource=invite,
+        )
+        event = invite.event
+        user = invite.invitee
+        if user not in event.attendants:
+            event.attendants.append(user)
+        if user in event.requesters:
+            event.requesters.remove(user)
+        cedar.assert_allowed(
+            principal=current_user,
+            action="deleteInvite",
+            resource=invite,
+        )
+        db.session.delete(invite)
+        db.session.commit()
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
 
 def decline_invitation(id):
-    invite = Invite.query.get(id)
-    db.session.delete(invite)
-    db.session.commit()
+    try:
+        if not current_user.is_authenticated:
+            raise SecurityException(
+                msg="decline invitation not allowed for not authenticated users",
+                page='sec_error.html'
+            )
+        invite = Invite.query.get(id)
+        if not invite:
+            raise SecurityException(msg="invitation not found", page='sec_error.html')
+        cedar.assert_allowed(
+            principal=current_user,
+            action="deleteInvite",
+            resource=invite,
+        )
+        db.session.delete(invite)
+        db.session.commit()
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
 
 # This is a sample of how one can extend the functionality of the manage_event
 # using the get_invite_candidates function.

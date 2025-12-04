@@ -1,3 +1,7 @@
+
+### VSCODE ###
+.vscode/
+
 ### Flask ###
 instance/*
 !instance/.gitignore
