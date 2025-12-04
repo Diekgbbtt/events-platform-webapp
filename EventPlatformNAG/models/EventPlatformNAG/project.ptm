@@ -1,15 +1,116 @@
 Personal data {
 
+    Person.name,
+    Person.surname,
+    Person.role,
+    Person.gender,
+    Person.email,
+    Person.subscriptions,
+    Person.logs,
+
+    Log.event
 }
 
 Purposes {
 
+    RECOMMEND_EVENTS,
+    CORE,
+    FUNCTIONAL includes RECOMMEND_EVENTS CORE,
+    
+    ANALYTICS,
+    
+    TARGETED_MARKETING,
+    MASS_MARKETING,
+    MARKETING includes TARGETED_MARKETING MASS_MARKETING,
+    
+    
+    ANY includes FUNCTIONAL ANALYTICS MARKETING
+       
 }
 
 Actual purposes {
 
+    
+    main CORE,
+
+    Person.user CORE,
+    Person.users CORE,
+    Person.leave CORE,
+    Person.profile CORE,
+    Person.update_user CORE,
+    Person.subscribe CORE,
+    Person.unsubscribe CORE,
+    Person.recommend_events RECOMMEND_EVENTS,
+    Person.send_advertisement_to_user MASS_MARKETING,
+    Person.add_moderator CORE,
+    Person.remove_moderator CORE,
+
+    Event.events CORE,
+    Event.view_event FUNCTIONAL,
+
+    Event.edit_event CORE,
+    Event.update_event CORE,
+    Event.manage_event CORE,
+    Event.create_event CORE,
+    Event.analyze ANALYTICS,
+    Event.remove_attendee CORE,
+    Event.accept_request CORE,
+    Event.reject_request CORE,
+    Event.remove_category CORE,
+    Event.promote_manager CORE,
+    Event.demote_manager CORE,
+
+    Category.categories CORE,
+    Category.create_category CORE,
+    Category.view_category CORE,
+    Category.edit_category CORE,
+    Category.update_category CORE,
+    Category.get_candidates CORE,
+
+    Log.logs FUNCTIONAL,
+
+    Ad.get_personalize_ad TARGETED_MARKETING,
+    Ad.remove_ad CORE,
+    Ad.create_ad CORE
+
 }
 
 Declared purposes {
+
+    Person.name ANY,
+    Person.surname ANY,
+    Person.role ANY,
+    Person.gender ANY,
+    Person.email ANY,
+    Person.subscriptions ANY,
+    Person.logs ANY,
+    Log.event ANY,
+    
+    Person.name MARKETING,
+    Person.gender MARKETING,
+    Person.email MARKETING,
+    Person.gender TARGETED_MARKETING,
+    Person.email MASS_MARKETING,
+
+    Person.gender ANALYTICS,
+
+    Log.event FUNCTIONAL,
+
+    Person.name FUNCTIONAL,
+    Person.surname FUNCTIONAL,
+    Person.role FUNCTIONAL,
+    Person.gender FUNCTIONAL,
+    Person.email FUNCTIONAL,
+    Person.subscriptions FUNCTIONAL,
+    Person.logs FUNCTIONAL,
+    Person.subscriptions [self.role = Role::REGULARUSER] <you are a regularuser> RECOMMEND_EVENTS,
+    Person.logs RECOMMEND_EVENTS,
+    Person.name CORE,
+    Person.surname CORE,
+    Person.role CORE,
+    Person.gender CORE,
+    Person.email CORE,
+    Person.subscriptions CORE,
+    Person.logs CORE
 
 }
