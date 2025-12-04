@@ -2,12 +2,18 @@
 entity EventsContainer;
 entity AdContainer;
 entity CategoriesContainer;
+entity InvitesContainer;
+entity LogContainer;
 
 entity Ad {
     content: String
 };
 
-entity LogContainer;
+entity Invite {
+    invitee: Person,
+    invitedBy: Person,
+    event: Event
+};
 
 entity Role in Role;
 
@@ -36,7 +42,8 @@ entity Event {
     managedBy: Set<Person>,
     attendants: Set<Person>,
     requesters: Set<Person>,
-    categories: Set<Category>
+    categories: Set<Category>,
+    invitations: Set<Invite>
 };
 
 entity Person in Role {
@@ -52,7 +59,10 @@ entity Person in Role {
     requests: Set<Event>,
     subscriptions: Set<Category>,
     moderates: Set<Category>,
-    consents: Set<Consent>
+    consents: Set<Consent>,
+    invitations: Set<Invite>,
+    invites: Set<Invite>
+
 };
 
 action addEvent appliesTo {

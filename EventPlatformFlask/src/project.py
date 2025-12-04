@@ -1,7 +1,7 @@
 from flask import request
 from flask_user import current_user, login_required
 from model import ADMIN, db, Person, Role, Event, Category, Purpose, Ad, Consent, AnyPurpose, FunctionalPurpose, MarketingPurpose, AnalyticsPurpose, CorePurpose, RecommendEventsPurpose, TargetedMarketingPurpose, MassMarketingPurpose, Log, MODERATOR
-from dto import PersonDTO, EventDTO, CategoryDTO, RoleDTO, AdDTO, LogDTO, RESTRICTED, _clear_cache
+from dto import PersonDTO, EventDTO, CategoryDTO, RoleDTO, AdDTO, LogDTO, InviteDTO, RESTRICTED, _clear_cache
 import hashlib
 import random
 import sys
@@ -223,8 +223,23 @@ def users():
 def _serialize_user(user: Person, personal_data : list[str] = []):
     if user is None:
         return None
-
-    user_dto = PersonDTO.copy(user)
+    # TODO maybe externalise to a _restricted_person_dto method that restrict attributes according to the calling method  
+    user_dto = PersonDTO(user.id,
+                        name=user.name,
+                        surname=user.surname,
+                        gender=user.gender,
+                        email=user.email,
+                        roles=RoleDTO.copies(user.roles),
+                        events=EventDTO.copies(user.events),
+                        manages=EventDTO.copies(user.manages),
+                        attends=EventDTO.copies(user.attends),
+                        requests=EventDTO.copies(user.requests),
+                        subscriptions=CategoryDTO.copies(user.subscriptions),
+                        moderates=CategoryDTO.copies(user.moderates),
+                        invitations=InviteDTO.copies(user.invitations),
+                        invites=InviteDTO.copies(user.invites)
+                )   
+    _clear_cache()
     can_read_person = (
         current_user.is_authenticated
         and check_cedar_permission(
@@ -245,6 +260,8 @@ def _serialize_user(user: Person, personal_data : list[str] = []):
         user_dto.requests = []
         user_dto.subscriptions = []
         user_dto.logs = []
+        user_dto.invitations = []
+        user_dto.invites = []
         return user_dto
 
     return _serialize_user_privacy(user, user_dto, personal_data)
@@ -550,7 +567,8 @@ def update_event():
 
 def manage_event(id):
     event_dto = _serialize_event(Event.query.get(id))
-    return {'event': event_dto}
+    return {'event' : event_dto, 'users' : get_invite_candidates(event_dto)}
+
 
 def remove_category(id,c):
     try:
@@ -958,11 +976,11 @@ def decline_invitation(id):
 #     event = EventDTO.copy(Event.query.get(id))
 #     return {'event' : event, 'users' : get_invite_candidates(event)}
 
-def get_invite_candidates(event):
+def get_invite_candidates(event_dto):
     all_users = Person.query.all()
-    invitees = list([i.invitee.id for i in event.invitations])
-    attendants = list([a.id for a in event.attendants])
-    requesters = list([r.id for r in event.requesters])
+    invitees = list([i.invitee.id for i in event_dto.invitations])
+    attendants = list([a.id for a in event_dto.attendants])
+    requesters = list([r.id for r in event_dto.requesters])
     users = []
     for u in all_users:
         if u.id not in invitees and u.id not in attendants and u.id not in requesters:
