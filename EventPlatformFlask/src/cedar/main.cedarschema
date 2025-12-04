@@ -83,6 +83,26 @@ action addCategory appliesTo {
     resource: CategoriesContainer
 };
 
+action createInvite appliesTo {
+    principal: Person,
+    resource: InvitesContainer
+};
+
+action setInviteEvent appliesTo {
+    principal: Person,
+    resource: Event
+};
+
+action setInviteInvitedBy appliesTo {
+    principal: Person,
+    resource: Invite
+};
+
+action setInviteInvitee appliesTo {
+    principal: Person,
+    resource: Invite
+};
+
 action updateEvent appliesTo {
     principal: Person,
     resource: Event
@@ -113,9 +133,29 @@ action readPerson appliesTo {
     resource: Person
 };
 
+action readPersonInvitations appliesTo {
+    principal: Person,
+    resource: Person
+};
+
+action readPersonInvites appliesTo {
+    principal: Person,
+    resource: Person
+};
+
 action readCategorySubscribers appliesTo {
     principal: Person,
     resource: Category
+};
+
+action readEventInvitations appliesTo {
+    principal: Person,
+    resource: Event
+};
+
+action readInvite appliesTo {
+    principal: Person,
+    resource: Invite
 };
 
 action readEventRequesters appliesTo {
@@ -200,12 +240,27 @@ action analyze appliesTo {
     resource: Event
 };
 
+action deleteInvite appliesTo {
+    principal: Person,
+    resource: Invite
+};
+
+action acceptInvite appliesTo {
+    principal: Person,
+    resource: Invite
+};
+
 action updateCategory appliesTo {
     principal: Person,
     resource: Category
 };
 
 action moderatorReadEmail appliesTo {
+    principal: Person,
+    resource: Person
+};
+
+action viewPersonalizedStats appliesTo {
     principal: Person,
     resource: Person
 };
