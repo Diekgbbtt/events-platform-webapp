@@ -361,7 +361,7 @@ def update_category():
 
 
 @app.route('/send_mass_advertisement', methods=['POST', 'GET'])
-@secure(db,P(['MASS_MARKETING']))
+@secure(db,P([]))
 def send_mass_advertisement():
     return Category.send_mass_advertisement(request)
 

@@ -61,7 +61,6 @@ Actual purposes {
     Event.promote_manager CORE,
     Event.demote_manager CORE,
 
-    Category.send_mass_advertisement MASS_MARKETING,
     Category.categories CORE,
     Category.create_category CORE,
     Category.view_category CORE,
@@ -105,7 +104,7 @@ Declared purposes {
     Person.email FUNCTIONAL,
     Person.subscriptions FUNCTIONAL,
     Person.logs FUNCTIONAL,
-    Person.subscriptions [self.role = 'REGULARUSER'] <you are a regularuser> RECOMMEND_EVENTS,
+    Person.subscriptions [self.role = Role::REGULARUSER] <you are a regularuser> RECOMMEND_EVENTS,
     Person.logs RECOMMEND_EVENTS,
     Person.name CORE,
     Person.surname CORE,
