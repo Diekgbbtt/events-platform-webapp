@@ -2,15 +2,176 @@ USER Person
 
 anonymous Role VISITOR {
     Person {
-        fullAccess
+        read(name)
+        read(surname)
+        read(role)
+        read(moderates)
+        
+        add(logs) [value.user = null]
     }
 
     Event {
-        fullAccess
+        read(title)
+        read(description)
+        read(owner)
+        read(categories)
+    
+        add(logs) [value.user = null]
+    
     }
 
     Category {
-        fullAccess
+        read(name)
+        read(events)
+        read(moderators)
+    }
+
+    Ad {
+        read(content)
+    }
+
+    Log {
+        create
+
+        update(user) [self.user = null]
+        update(event)
+        update(timestamp) [Log::allInstances().isEmpty() or Log::allInstances()->asSequence()->last().timestamp<value]
+    }
+}
+
+default Role REGULARUSER extends VISITOR {
+    Person {
+        read(gender) [self = caller]
+        read(email) [self = caller]
+        read(events) [self = caller]
+        read(manages) [self = caller]
+        read(attends) [self = caller]
+
+        read(subscriptions) [self = caller]
+        read(requests) [self = caller]
+        read(logs) [self = caller]
+        
+        add(events) [value.owner = null]
+        add(manages) [value.owner = caller and ((not value.attendants.isEmpty() and value.attendants->includes(self)) or value.owner = self)]
+        add(attends) [((not value.managedBy.isEmpty() and value.managedBy->includes(caller)) or value.owner = caller) and (not value.requesters.isEmpty() and value.requesters->includes(self))]
+        add(subscriptions) [self = caller]
+        add(requests) [self = caller]
+        add(logs) [self = caller]
+
+        remove(manages) [value.owner <> self and value.owner = caller]
+        remove(attends) [(value.owner <> self and (value.managedBy.isEmpty() or not value.managedBy->includes(self))) and ((not value.managedBy.isEmpty() and value.managedBy->includes(caller)) or value.owner = caller or self = caller)]
+        remove(subscriptions) [self = caller]
+        remove(requests) [(not value.managedBy.isEmpty() and value.managedBy->includes(caller)) or value.owner = caller or self = caller]
+        remove(events) [value.owner = null]
+
+        update(name) [self = caller]
+        update(surname) [self = caller]
+        update(email) [self = caller]
+        update(gender) [self = caller]
+    }
+
+    Event {
+
+        create [Event.allInstances()->select(e|e.owner = caller)->size()<5]
+        
+        read(requesters) [self.owner = caller or (not self.managedBy.isEmpty() and self.managedBy->includes(caller))]
+        read(attendants)
+        read(managedBy)
+
+        update(title) [self.owner = null or self.owner = caller or (not self.managedBy.isEmpty() and self.managedBy->includes(caller))]
+        update(description) [self.owner = null or self.owner = caller or (not self.managedBy.isEmpty() and self.managedBy->includes(caller))]
+        update(owner) [self.owner = null and value = caller]
+
+        add(attendants) [self.owner = null or ((self.owner = caller or (not self.managedBy.isEmpty() and self.managedBy->includes(caller))))]
+        add(managedBy) [self.owner = null or (self.owner = caller and ((not self.attendants.isEmpty() and self.attendants->includes(value)) or value = caller))]
+        add(categories) [self.owner = caller or (not self.managedBy.isEmpty() and self.managedBy->includes(caller))]
+        add(requesters) [value = caller]
+        add(logs) [value.user = caller]
+
+        remove(managedBy) [value <> self.owner and self.owner = caller]
+        remove(attendants) [(value <> self.owner and (self.managedBy.isEmpty() or not self.managedBy->includes(value))) and (self.owner = caller or (not self.managedBy.isEmpty() and self.managedBy->includes(caller)) or value = caller)]
+        remove(categories) [self.owner = caller or (not self.managedBy.isEmpty() and self.managedBy->includes(caller)) or (not value.moderators.isEmpty() and value.moderators->includes(caller))]
+        remove(requesters) [value = caller or self.owner = caller or (not self.managedBy.isEmpty() and self.managedBy->includes(caller))]
+        
+        delete [self.owner = caller]
+    }
+
+    Category {
+
+        add(subscribers) [value = caller]
+        add(events) [value.owner = caller or (not value.managedBy.isEmpty() and value.managedBy->includes(caller)) or value.owner = null]
+
+        remove(subscribers) [value = caller]
+        remove(events) [value.owner = caller or (not value.managedBy.isEmpty() and value.managedBy->includes(caller))]
+    }
+
+    Ad {}
+
+    Log {
+
+        read [self.user = caller]
+        update(user) [value = caller]
+    }
+}
+
+Role PREMIUMUSER extends REGULARUSER {
+    Person {}
+
+    Event {
+        create
+    }
+
+    Category {}
+
+    Ad {}
+
+    Log {}
+}
+
+Role MODERATOR extends PREMIUMUSER {
+    Person {
+        read(email) [not self.subscriptions->isEmpty() and not caller.moderates->isEmpty() and self.subscriptions->exists(s|s.moderators->includes(caller))]
+        
+        remove(moderates) [self = caller]
+    }
+
+    Event {   
+        remove(categories) [self.owner = caller or (not self.managedBy.isEmpty() and self.managedBy->includes(caller)) or (not value.moderators.isEmpty() and value.moderators->includes(caller))]
+    }
+
+    Category {
+        read(subscribers) [self.moderators->includes(caller)]
+
+        remove(events) [value.owner = caller or (not value.managedBy.isEmpty() and value.managedBy->includes(caller)) or (not self.moderators.isEmpty() and self.moderators->includes(caller))]
+        remove(moderators) [value = caller]
+    }
+
+    Ad {}
+
+    Log {}
+}
+
+Role ADMIN extends PREMIUMUSER {
+    Person {
+        read(logs)
+        update(role)
+        add(moderates) [self.role = Role::MODERATOR]
+        remove(moderates) [self.role = Role::MODERATOR]
+    }
+
+    Event {
+        read(logs)
+    }
+
+    Category {
+        create
+        read
+        update
+        delete
+
+        add(moderators) [value.role = Role::MODERATOR]
+        
+        remove(moderators) [value.role = Role::MODERATOR]
     }
 
     Ad {
