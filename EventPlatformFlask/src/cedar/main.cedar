@@ -160,7 +160,7 @@ permit (
     action in [Action::"acceptRequest", Action::"rejectRequest"],
     resource is Event
 ) when {
-    principal in Role::"ADMIN" ||  resource.managedBy.contains(principal) || resource.owner == principal
+    resource.managedBy.contains(principal) || resource.owner == principal
 };
 
 // user can reject(retire) its own request 

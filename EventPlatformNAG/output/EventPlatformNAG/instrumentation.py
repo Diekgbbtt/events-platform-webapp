@@ -323,7 +323,7 @@ def secure_init(i,sm,pm):
 
 
 class Secure:
-    resources = {'Person': ['role', 'name', 'surname', 'gender', 'email', 'events', 'manages', 'attends', 'subscriptions', 'moderates', 'requests', 'logs'], 'Event': ['title', 'description', 'owner', 'managedBy', 'attendants', 'requesters', 'categories', 'logs'], 'Category': ['name', 'subscribers', 'moderators', 'events'], 'Ad': ['content'], 'Log': ['timestamp', 'user', 'event']}
+    resources = {'Person': ['role', 'name', 'surname', 'gender', 'email', 'events', 'manages', 'attends', 'subscriptions', 'moderates', 'requests', 'logs', 'invitations', 'invites'], 'Event': ['title', 'description', 'owner', 'managedBy', 'attendants', 'requesters', 'categories', 'logs', 'invitations'], 'Category': ['name', 'subscribers', 'moderators', 'events'], 'Ad': ['content'], 'Log': ['timestamp', 'user', 'event'], 'Invite': ['invitee', 'invitedBy', 'event']}
 
     def __init__(self,sm,pm):
         self._sm = sm

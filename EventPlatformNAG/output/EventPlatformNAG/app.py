@@ -4,9 +4,9 @@
 from application import app
 from flask import render_template, redirect, url_for, request, jsonify
 from flask_user import UserManager, user_registered, login_required, current_user
-from dtm import Person, Event, Category, Ad, Log, db
+from dtm import Person, Event, Category, Ad, Log, Invite, db
 from dtm import VISITOR, REGULARUSER, PREMIUMUSER, MODERATOR, ADMIN, Role
-from dtm import RECOMMEND_EVENTS, CORE, FUNCTIONAL, ANALYTICS, TARGETED_MARKETING, MASS_MARKETING, MARKETING, ANY, Purpose, Consent, PersonalData
+from dtm import RECOMMEND_EVENTS, CORE, FUNCTIONAL, ANALYTICS, STATS, INSIGHTS, TARGETED_MARKETING, MASS_MARKETING, MARKETING, ANY, Purpose, Consent, PersonalData
 from instrumentation import SecurityException, secure
 from ptm import EventPlatformNAGPrivacyModel
 import logging
@@ -40,6 +40,8 @@ with app.app_context():
         db.session.add(Purpose(name=CORE))
         db.session.add(Purpose(name=FUNCTIONAL))
         db.session.add(Purpose(name=ANALYTICS))
+        db.session.add(Purpose(name=STATS))
+        db.session.add(Purpose(name=INSIGHTS))
         db.session.add(Purpose(name=TARGETED_MARKETING))
         db.session.add(Purpose(name=MASS_MARKETING))
         db.session.add(Purpose(name=MARKETING))
@@ -55,6 +57,12 @@ with app.app_context():
         db.session.commit()
         p = Purpose.query.filter_by(name=ANALYTICS).first()
         db.session.commit()
+        p = Purpose.query.filter_by(name=STATS).first()
+        db.session.commit()
+        p = Purpose.query.filter_by(name=INSIGHTS).first()
+        p.subpurposes.append(Purpose.query.filter_by(name=STATS).first())
+        p.subpurposes.append(Purpose.query.filter_by(name=ANALYTICS).first())
+        db.session.commit()
         p = Purpose.query.filter_by(name=TARGETED_MARKETING).first()
         db.session.commit()
         p = Purpose.query.filter_by(name=MASS_MARKETING).first()
@@ -65,7 +73,7 @@ with app.app_context():
         db.session.commit()
         p = Purpose.query.filter_by(name=ANY).first()
         p.subpurposes.append(Purpose.query.filter_by(name=FUNCTIONAL).first())
-        p.subpurposes.append(Purpose.query.filter_by(name=ANALYTICS).first())
+        p.subpurposes.append(Purpose.query.filter_by(name=INSIGHTS).first())
         p.subpurposes.append(Purpose.query.filter_by(name=MARKETING).first())
         db.session.commit()
         
@@ -78,6 +86,7 @@ with app.app_context():
         db.session.add(PersonalData(resource='Person', subresource='email'))
         db.session.add(PersonalData(resource='Person', subresource='subscriptions'))
         db.session.add(PersonalData(resource='Person', subresource='logs'))
+        db.session.add(PersonalData(resource='Person', subresource='attends'))
         db.session.add(PersonalData(resource='Log', subresource='event'))
         db.session.commit()
 
@@ -203,7 +212,7 @@ def user():
 
 
 @app.route('/profile', methods=['POST', 'GET'])
-@secure(db,P(['CORE']))
+@secure(db,P(['FUNCTIONAL']))
 def profile():
     return Person.profile(request)
 
@@ -250,6 +259,12 @@ def unsubscribe():
     return Person.unsubscribe(request)
 
 
+
+
+@app.route('/personalized_stats', methods=['POST', 'GET'])
+@secure(db,P(['STATS']))
+def personalized_stats():
+    return Person.personalized_stats(request)
 
 
 @app.route('/events', methods=['POST', 'GET'])
@@ -343,7 +358,7 @@ def create_category():
 
 
 @app.route('/view_category', methods=['POST', 'GET'])
-@secure(db,P(['CORE']))
+@secure(db,P(['FUNCTIONAL']))
 def view_category():
     return Category.view_category(request)
 
@@ -374,13 +389,13 @@ def ads():
 
 
 @app.route('/create_ad', methods=['POST', 'GET'])
-@secure(db,P(['CORE']))
+@secure(db,P(['FUNCTIONAL']))
 def create_ad():
     return Ad.create_ad(request)
 
 
 @app.route('/remove_ad', methods=['POST', 'GET'])
-@secure(db,P(['CORE']))
+@secure(db,P(['FUNCTIONAL']))
 def remove_ad():
     return Ad.remove_ad(request)
 
@@ -390,4 +405,22 @@ def remove_ad():
 @secure(db,P(['FUNCTIONAL']))
 def logs():
     return Log.logs(request)
+
+
+@app.route('/send_invite', methods=['POST', 'GET'])
+@secure(db,P(['CORE']))
+def send_invite():
+    return Invite.send_invite(request)
+
+
+@app.route('/accept_invitation', methods=['POST', 'GET'])
+@secure(db,P(['CORE']))
+def accept_invitation():
+    return Invite.accept_invitation(request)
+
+
+@app.route('/decline_invitation', methods=['POST', 'GET'])
+@secure(db,P(['CORE']))
+def decline_invitation():
+    return Invite.decline_invitation(request)
 
