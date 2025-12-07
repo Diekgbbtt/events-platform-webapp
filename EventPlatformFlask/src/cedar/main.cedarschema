@@ -10,6 +10,9 @@ entity Ad {
 };
 
 entity Invite {
+    invitee_id: Long,
+    event_id: Long,
+    invitedBy_id: Long,
     invitee: Person,
     invitedBy: Person,
     event: Event
@@ -95,12 +98,12 @@ action setInviteEvent appliesTo {
 
 action setInviteInvitedBy appliesTo {
     principal: Person,
-    resource: Invite
+    resource: Event
 };
 
 action setInviteInvitee appliesTo {
     principal: Person,
-    resource: Invite
+    resource: Event
 };
 
 action updateEvent appliesTo {

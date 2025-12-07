@@ -200,18 +200,10 @@ permit (
 
 permit (
     principal is Person,
-    action == Action::"setInviteEvent",
+    action in [Action::"setInviteEvent", Action::"setInviteInvitedBy", Action::"setInviteInvitee"],
     resource is Event
 ) when {
     resource.owner == principal || resource.managedBy.contains(principal)
-};
-
-permit (
-    principal is Person,
-    action in [Action::"setInviteInvitedBy", Action::"setInviteInvitee"],
-    resource is Invite
-) when {
-    resource has event && (resource.event.owner == principal || resource.event.managedBy.contains(principal))
 };
 
 permit (
@@ -235,7 +227,7 @@ permit (
     action == Action::"readPersonInvites",
     resource is Person
 ) when {
-    principal in Role::"ADMIN" || principal == resource
+    principal == resource
 };
 
 permit (
