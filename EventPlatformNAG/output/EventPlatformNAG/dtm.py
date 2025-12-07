@@ -31,6 +31,16 @@ ADMIN = "ADMIN"
 # =========================
 # Purpose Constants
 # =========================
+RECOMMEND_EVENTS = "RECOMMEND_EVENTS"
+CORE = "CORE"
+FUNCTIONAL = "FUNCTIONAL"
+ANALYTICS = "ANALYTICS"
+STATS = "STATS"
+INSIGHTS = "INSIGHTS"
+TARGETED_MARKETING = "TARGETED_MARKETING"
+MASS_MARKETING = "MASS_MARKETING"
+MARKETING = "MARKETING"
+ANY = "ANY"
 
 
 
@@ -129,6 +139,30 @@ with app.app_context():
         user = db.relationship('Person', back_populates='association_logs_user', uselist=False)
     
     # =========================
+    # Association between Invite and Person
+    # =========================
+    
+    class association_invitations_invitee(db.Model):
+            
+        id = db.Column(db.Integer, primary_key=True)
+        invitations_id = db.Column(db.Integer(), db.ForeignKey('invite.id'), unique=True)
+        invitee_id = db.Column(db.Integer(), db.ForeignKey('person.id'))
+        invitations = db.relationship('Invite', back_populates='association_invitations_invitee', uselist=False)
+        invitee = db.relationship('Person', back_populates='association_invitations_invitee', uselist=False)
+    
+    # =========================
+    # Association between Invite and Person
+    # =========================
+    
+    class association_invitedby_invites(db.Model):
+            
+        id = db.Column(db.Integer, primary_key=True)
+        invites_id = db.Column(db.Integer(), db.ForeignKey('invite.id'), unique=True)
+        invitedBy_id = db.Column(db.Integer(), db.ForeignKey('person.id'))
+        invites = db.relationship('Invite', back_populates='association_invitedby_invites', uselist=False)
+        invitedBy = db.relationship('Person', back_populates='association_invitedby_invites', uselist=False)
+    
+    # =========================
     # Association between Category and Event
     # =========================
     
@@ -151,6 +185,18 @@ with app.app_context():
         event_id = db.Column(db.Integer(), db.ForeignKey('event.id'))
         logs = db.relationship('Log', back_populates='association_event_logs', uselist=False)
         event = db.relationship('Event', back_populates='association_event_logs', uselist=False)
+    
+    # =========================
+    # Association between Invite and Event
+    # =========================
+    
+    class association_event_invitations(db.Model):
+            
+        id = db.Column(db.Integer, primary_key=True)
+        invitations_id = db.Column(db.Integer(), db.ForeignKey('invite.id'), unique=True)
+        event_id = db.Column(db.Integer(), db.ForeignKey('event.id'))
+        invitations = db.relationship('Invite', back_populates='association_event_invitations', uselist=False)
+        event = db.relationship('Event', back_populates='association_event_invitations', uselist=False)
     
     
 
@@ -296,6 +342,44 @@ with app.app_context():
                 super().remove(e)
                 v = association_logs_user.query.filter_by(user=self._this,logs=e).first()
                 db.session.delete(v)
+        class invitationsList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_invitations_invitee(invitee=self._this,invitations=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_invitations_invitee.query.filter_by(invitee=self._this,invitations=e).first()
+                db.session.delete(v)
+        class invitesList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_invitedby_invites(invitedBy=self._this,invites=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_invitedby_invites.query.filter_by(invitedBy=self._this,invites=e).first()
+                db.session.delete(v)
         
 
         #Attributes
@@ -353,6 +437,21 @@ with app.app_context():
         def logs(self):    
             return Person.logsList(self, [x.logs for x in self.association_logs_user]) 
         
+        association_invitations_invitee = db.relationship('association_invitations_invitee', cascade="all, delete-orphan", back_populates='invitee')
+        
+        @property
+        def invitations(self):    
+            return Person.invitationsList(self, [x.invitations for x in self.association_invitations_invitee]) 
+        
+        association_invitedby_invites = db.relationship('association_invitedby_invites', cascade="all, delete-orphan", back_populates='invitedBy')
+        
+        @property
+        def invites(self):    
+            return Person.invitesList(self, [x.invites for x in self.association_invitedby_invites]) 
+        
+        @property
+        def owner(self):
+            return self
         @property
         def role(self):
             return self.roles[0]
@@ -432,6 +531,11 @@ with app.app_context():
         def send_advertisement_to_user(cls, request):
             from project_aux import send_advertisement_to_user
             return send_advertisement_to_user(request)
+        
+        @classmethod
+        def personalized_stats(cls, request):
+            from project import personalized_stats
+            return personalized_stats(request)
         
 
     # =========================
@@ -616,6 +720,25 @@ with app.app_context():
                 super().remove(e)
                 v = association_event_logs.query.filter_by(event=self._this,logs=e).first()
                 db.session.delete(v)
+        class invitationsList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_event_invitations(event=self._this,invitations=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_event_invitations.query.filter_by(event=self._this,invitations=e).first()
+                db.session.delete(v)
         
 
         # Attributes
@@ -667,6 +790,12 @@ with app.app_context():
         def logs(self):
             
             return Event.logsList(self, [x.logs for x in self.association_event_logs]) 
+            
+        association_event_invitations = db.relationship('association_event_invitations', cascade="all, delete-orphan", back_populates='event')
+        @property
+        def invitations(self):
+            
+            return Event.invitationsList(self, [x.invitations for x in self.association_event_invitations]) 
             
         
     
@@ -1008,6 +1137,12 @@ with app.app_context():
                 v = association_event_logs(logs=self,event=value)
                 db.session.add(v)
             
+        owner_id = db.Column(db.Integer, db.ForeignKey('person.id'))
+        owner = db.relationship('Person', foreign_keys=owner_id, backref='personal')
+        def __init__(self, **kwargs):
+            super(Log, self).__init__(**kwargs)
+            if current_user.is_authenticated:
+                self.owner=current_user
         
     
         @classmethod
@@ -1021,6 +1156,149 @@ with app.app_context():
             return logs(request)
         
 
+    
+    
+    
+
+    # =========================
+    # Entity Invite
+    # =========================
+    @Secure(EventPlatformNAGSecurityModel,EventPlatformNAGPrivacyModel)
+    class Invite(db.Model,OCLTerm):
+        
+        # Association-end type classes
+        class inviteeList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_invitations_invitee(invitations=self._this,invitee=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_invitations_invitee.query.filter_by(invitations=self._this,invitee=e).first()
+                db.session.delete(v)
+        class invitedByList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_invitedby_invites(invites=self._this,invitedBy=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_invitedby_invites.query.filter_by(invites=self._this,invitedBy=e).first()
+                db.session.delete(v)
+        class eventList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_event_invitations(invitations=self._this,event=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_event_invitations.query.filter_by(invitations=self._this,event=e).first()
+                db.session.delete(v)
+        
+
+        # Attributes
+        id = db.Column(db.Integer, primary_key=True)
+        
+
+        # Association ends
+        association_invitations_invitee = db.relationship('association_invitations_invitee', cascade="all, delete-orphan", back_populates='invitations', uselist=False)
+        @property
+        def invitee(self):
+            return self.association_invitations_invitee.invitee if self.association_invitations_invitee else None
+
+        @invitee.setter
+        def invitee(self, value):
+            if self.association_invitations_invitee:
+                self.association_invitations_invitee.invitee = value
+            else:
+                v = association_invitations_invitee(invitations=self,invitee=value)
+                db.session.add(v)
+            
+        association_invitedby_invites = db.relationship('association_invitedby_invites', cascade="all, delete-orphan", back_populates='invites', uselist=False)
+        @property
+        def invitedBy(self):
+            return self.association_invitedby_invites.invitedBy if self.association_invitedby_invites else None
+
+        @invitedBy.setter
+        def invitedBy(self, value):
+            if self.association_invitedby_invites:
+                self.association_invitedby_invites.invitedBy = value
+            else:
+                v = association_invitedby_invites(invites=self,invitedBy=value)
+                db.session.add(v)
+            
+        association_event_invitations = db.relationship('association_event_invitations', cascade="all, delete-orphan", back_populates='invitations', uselist=False)
+        @property
+        def event(self):
+            return self.association_event_invitations.event if self.association_event_invitations else None
+
+        @event.setter
+        def event(self, value):
+            if self.association_event_invitations:
+                self.association_event_invitations.event = value
+            else:
+                v = association_event_invitations(invitations=self,event=value)
+                db.session.add(v)
+            
+        
+    
+        @classmethod
+        def allInstances(cls):
+            return cls.query.all() if hasattr(cls,'query') else super().allInstances()
+
+        
+        @classmethod
+        def send_invite(cls, request):
+            from project import send_invite
+            return send_invite(request)
+        
+        @classmethod
+        def accept_invitation(cls, request):
+            from project import accept_invitation
+            return accept_invitation(request)
+        
+        @classmethod
+        def decline_invitation(cls, request):
+            from project import decline_invitation
+            return decline_invitation(request)
+        
+
+    
+    
+    
+    
+    
+    
     
     
     
