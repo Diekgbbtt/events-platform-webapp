@@ -54,7 +54,7 @@ def get_candidates(args={}):
 
 
 
-@secure(db,P(['TARGETED_MARKETING']))
+@secure(db,P(['TARGETED_MARKETING', 'MARKETING']))
 def get_personalize_ad(args={}):
     return Ad.get_personalize_ad(args)
 

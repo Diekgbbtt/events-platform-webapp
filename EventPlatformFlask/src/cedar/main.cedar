@@ -74,6 +74,14 @@ permit (
 };
 
 permit (
+    principal is Person,
+    action == Action::"addRequest",
+    resource is Event
+) when{
+    ! context.invitationsevents.contains(resource)
+};
+
+permit (
     principal is Person in Role::"ADMIN",
     action == Action::"readAllLogs",
     resource is LogContainer
@@ -157,10 +165,18 @@ permit (
 
 permit (
     principal is Person,
-    action in [Action::"acceptRequest", Action::"rejectRequest"],
+    action == Action::"rejectRequest",
     resource is Event
 ) when {
     resource.managedBy.contains(principal) || resource.owner == principal
+};
+
+permit (
+    principal is Person,
+    action == Action::"acceptRequest",
+    resource is Event
+) when {
+    (resource.managedBy.contains(principal) || resource.owner == principal) || context.invitedpeople.contains(context.requester)
 };
 
 // user can reject(retire) its own request 
@@ -200,11 +216,20 @@ permit (
 
 permit (
     principal is Person,
-    action in [Action::"setInviteEvent", Action::"setInviteInvitedBy", Action::"setInviteInvitee"],
+    action in [Action::"setInviteEvent", Action::"setInviteInvitedBy"],
     resource is Event
 ) when {
     resource.owner == principal || resource.managedBy.contains(principal)
 };
+
+permit (
+    principal is Person,
+    action == Action::"setInviteInvitee",
+    resource is Event
+) when {
+    (resource.owner == principal || resource.managedBy.contains(principal)) && !(context.invitedpeople.contains(context.invitee) || resource.attendants.contains(context.invitee) || resource.requesters.contains(context.invitee))
+};
+
 
 permit (
     principal is Person,

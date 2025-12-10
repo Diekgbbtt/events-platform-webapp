@@ -16,6 +16,8 @@ class EventPlatformNAGPrivacyModel(PrivacyModel):
         CORE = auto()
         FUNCTIONAL = auto()
         ANALYTICS = auto()
+        STATS = auto()
+        INSIGHTS = auto()
         TARGETED_MARKETING = auto()
         MASS_MARKETING = auto()
         MARKETING = auto()
@@ -38,10 +40,11 @@ class EventPlatformNAGPrivacyModel(PrivacyModel):
         {'resource': 'Person', 'subresource': 'email'},
         {'resource': 'Person', 'subresource': 'subscriptions'},
         {'resource': 'Person', 'subresource': 'logs'},
+        {'resource': 'Person', 'subresource': 'attends'},
         {'resource': 'Log', 'subresource': 'event'}
         ]
         
-    model = [(Purpose.ANY, [{'resource': 'Person', 'subresource': 'name'}], Constraint.fullAccess, 'true'), (Purpose.ANY, [{'resource': 'Person', 'subresource': 'surname'}], Constraint.fullAccess, 'true'), (Purpose.ANY, [{'resource': 'Person', 'subresource': 'role'}], Constraint.fullAccess, 'true'), (Purpose.ANY, [{'resource': 'Person', 'subresource': 'gender'}], Constraint.fullAccess, 'true'), (Purpose.ANY, [{'resource': 'Person', 'subresource': 'email'}], Constraint.fullAccess, 'true'), (Purpose.ANY, [{'resource': 'Person', 'subresource': 'subscriptions'}], Constraint.fullAccess, 'true'), (Purpose.ANY, [{'resource': 'Person', 'subresource': 'logs'}], Constraint.fullAccess, 'true'), (Purpose.ANY, [{'resource': 'Log', 'subresource': 'event'}], Constraint.fullAccess, 'true'), (Purpose.MARKETING, [{'resource': 'Person', 'subresource': 'name'}], Constraint.fullAccess, 'true'), (Purpose.MARKETING, [{'resource': 'Person', 'subresource': 'gender'}], Constraint.fullAccess, 'true'), (Purpose.MARKETING, [{'resource': 'Person', 'subresource': 'email'}], Constraint.fullAccess, 'true'), (Purpose.TARGETED_MARKETING, [{'resource': 'Person', 'subresource': 'gender'}], Constraint.fullAccess, 'true'), (Purpose.MASS_MARKETING, [{'resource': 'Person', 'subresource': 'email'}], Constraint.fullAccess, 'true'), (Purpose.ANALYTICS, [{'resource': 'Person', 'subresource': 'gender'}], Constraint.fullAccess, 'true'), (Purpose.FUNCTIONAL, [{'resource': 'Log', 'subresource': 'event'}], Constraint.fullAccess, 'true'), (Purpose.FUNCTIONAL, [{'resource': 'Person', 'subresource': 'name'}], Constraint.fullAccess, 'true'), (Purpose.FUNCTIONAL, [{'resource': 'Person', 'subresource': 'surname'}], Constraint.fullAccess, 'true'), (Purpose.FUNCTIONAL, [{'resource': 'Person', 'subresource': 'role'}], Constraint.fullAccess, 'true'), (Purpose.FUNCTIONAL, [{'resource': 'Person', 'subresource': 'gender'}], Constraint.fullAccess, 'true'), (Purpose.FUNCTIONAL, [{'resource': 'Person', 'subresource': 'email'}], Constraint.fullAccess, 'true'), (Purpose.FUNCTIONAL, [{'resource': 'Person', 'subresource': 'subscriptions'}], Constraint.fullAccess, 'true'), (Purpose.FUNCTIONAL, [{'resource': 'Person', 'subresource': 'logs'}], Constraint.fullAccess, 'true'), (Purpose.RECOMMEND_EVENTS, [{'resource': 'Person', 'subresource': 'subscriptions'}], lambda self= None: self.dot('role') == dtm.Role.REGULARUSER, 'you are a regularuser'), (Purpose.RECOMMEND_EVENTS, [{'resource': 'Person', 'subresource': 'logs'}], Constraint.fullAccess, 'true'), (Purpose.CORE, [{'resource': 'Person', 'subresource': 'name'}], Constraint.fullAccess, 'true'), (Purpose.CORE, [{'resource': 'Person', 'subresource': 'surname'}], Constraint.fullAccess, 'true'), (Purpose.CORE, [{'resource': 'Person', 'subresource': 'role'}], Constraint.fullAccess, 'true'), (Purpose.CORE, [{'resource': 'Person', 'subresource': 'gender'}], Constraint.fullAccess, 'true'), (Purpose.CORE, [{'resource': 'Person', 'subresource': 'email'}], Constraint.fullAccess, 'true'), (Purpose.CORE, [{'resource': 'Person', 'subresource': 'subscriptions'}], Constraint.fullAccess, 'true'), (Purpose.CORE, [{'resource': 'Person', 'subresource': 'logs'}], Constraint.fullAccess, 'true')]
+    model = [(Purpose.MARKETING, [{'resource': 'Person', 'subresource': 'name'}], Constraint.fullAccess, 'true'), (Purpose.TARGETED_MARKETING, [{'resource': 'Person', 'subresource': 'gender'}], Constraint.fullAccess, 'true'), (Purpose.MASS_MARKETING, [{'resource': 'Person', 'subresource': 'email'}], Constraint.fullAccess, 'true'), (Purpose.STATS, [{'resource': 'Person', 'subresource': 'attends'}], lambda self= None: self.dot('attends').size() > 2, 'you attend more than two events'), (Purpose.STATS, [{'resource': 'Person', 'subresource': 'name'}], lambda self= None: self.dot('attends').size() > 2, 'you attend more than two events'), (Purpose.STATS, [{'resource': 'Person', 'subresource': 'subscriptions'}], lambda self= None: self.dot('attends').size() > 2, 'you attend more than two events'), (Purpose.ANALYTICS, [{'resource': 'Person', 'subresource': 'gender'}], Constraint.fullAccess, 'true'), (Purpose.FUNCTIONAL, [{'resource': 'Log', 'subresource': 'event'}], Constraint.fullAccess, 'true'), (Purpose.FUNCTIONAL, [{'resource': 'Person', 'subresource': 'attends'}], Constraint.fullAccess, 'true'), (Purpose.RECOMMEND_EVENTS, [{'resource': 'Person', 'subresource': 'subscriptions'}], lambda self= None: self.dot('role') == dtm.Role.REGULARUSER, 'you are a regularuser'), (Purpose.RECOMMEND_EVENTS, [{'resource': 'Person', 'subresource': 'logs'}], Constraint.fullAccess, 'true'), (Purpose.CORE, [{'resource': 'Person', 'subresource': 'name'}], Constraint.fullAccess, 'true'), (Purpose.CORE, [{'resource': 'Person', 'subresource': 'surname'}], Constraint.fullAccess, 'true'), (Purpose.CORE, [{'resource': 'Person', 'subresource': 'role'}], Constraint.fullAccess, 'true'), (Purpose.CORE, [{'resource': 'Person', 'subresource': 'gender'}], Constraint.fullAccess, 'true'), (Purpose.CORE, [{'resource': 'Person', 'subresource': 'email'}], Constraint.fullAccess, 'true'), (Purpose.CORE, [{'resource': 'Person', 'subresource': 'subscriptions'}], Constraint.fullAccess, 'true'), (Purpose.CORE, [{'resource': 'Person', 'subresource': 'logs'}], Constraint.fullAccess, 'true')]
 
 purpose_hierarchy = {
     EventPlatformNAGPrivacyModel.Purpose.RECOMMEND_EVENTS: [
@@ -54,6 +57,12 @@ purpose_hierarchy = {
     ], 
     EventPlatformNAGPrivacyModel.Purpose.ANALYTICS: [
     ], 
+    EventPlatformNAGPrivacyModel.Purpose.STATS: [
+    ], 
+    EventPlatformNAGPrivacyModel.Purpose.INSIGHTS: [
+        EventPlatformNAGPrivacyModel.Purpose.STATS, 
+        EventPlatformNAGPrivacyModel.Purpose.ANALYTICS
+    ], 
     EventPlatformNAGPrivacyModel.Purpose.TARGETED_MARKETING: [
     ], 
     EventPlatformNAGPrivacyModel.Purpose.MASS_MARKETING: [
@@ -64,7 +73,7 @@ purpose_hierarchy = {
     ], 
     EventPlatformNAGPrivacyModel.Purpose.ANY: [
         EventPlatformNAGPrivacyModel.Purpose.FUNCTIONAL, 
-        EventPlatformNAGPrivacyModel.Purpose.ANALYTICS, 
+        EventPlatformNAGPrivacyModel.Purpose.INSIGHTS, 
         EventPlatformNAGPrivacyModel.Purpose.MARKETING
     ]
 }

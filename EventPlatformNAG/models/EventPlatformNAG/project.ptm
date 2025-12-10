@@ -7,6 +7,7 @@ Personal data {
     Person.email,
     Person.subscriptions,
     Person.logs,
+    Person.attends,
 
     Log.event
 }
@@ -18,25 +19,29 @@ Purposes {
     FUNCTIONAL includes RECOMMEND_EVENTS CORE,
     
     ANALYTICS,
+    STATS,
+    INSIGHTS includes STATS ANALYTICS,
     
     TARGETED_MARKETING,
     MASS_MARKETING,
     MARKETING includes TARGETED_MARKETING MASS_MARKETING,
     
     
-    ANY includes FUNCTIONAL ANALYTICS MARKETING
+    ANY includes FUNCTIONAL INSIGHTS MARKETING
        
 }
 
 Actual purposes {
-
     
     main CORE,
 
     Person.user CORE,
     Person.users CORE,
     Person.leave CORE,
-    Person.profile CORE,
+    Person.leave FUNCTIONAL,
+    Person.join CORE,
+    Person.join FUNCTIONAL,
+    Person.profile FUNCTIONAL,
     Person.update_user CORE,
     Person.subscribe CORE,
     Person.unsubscribe CORE,
@@ -44,9 +49,11 @@ Actual purposes {
     Person.send_advertisement_to_user MASS_MARKETING,
     Person.add_moderator CORE,
     Person.remove_moderator CORE,
+    Person.personalized_stats STATS,
 
     Event.events CORE,
     Event.view_event FUNCTIONAL,
+    Event.view_event CORE,
 
     Event.edit_event CORE,
     Event.update_event CORE,
@@ -58,11 +65,12 @@ Actual purposes {
     Event.reject_request CORE,
     Event.remove_category CORE,
     Event.promote_manager CORE,
+    Event.promote_manager FUNCTIONAL,
     Event.demote_manager CORE,
 
     Category.categories CORE,
     Category.create_category CORE,
-    Category.view_category CORE,
+    Category.view_category FUNCTIONAL,
     Category.edit_category CORE,
     Category.update_category CORE,
     Category.get_candidates CORE,
@@ -70,39 +78,30 @@ Actual purposes {
     Log.logs FUNCTIONAL,
 
     Ad.get_personalize_ad TARGETED_MARKETING,
-    Ad.remove_ad CORE,
-    Ad.create_ad CORE
+    Ad.get_personalize_ad MARKETING,
+    Ad.remove_ad FUNCTIONAL,
+    Ad.create_ad FUNCTIONAL,
+
+    Invite.send_invite CORE,
+    Invite.accept_invitation CORE,
+    Invite.accept_invitation FUNCTIONAL,
+    Invite.decline_invitation CORE
 
 }
 
 Declared purposes {
 
-    Person.name ANY,
-    Person.surname ANY,
-    Person.role ANY,
-    Person.gender ANY,
-    Person.email ANY,
-    Person.subscriptions ANY,
-    Person.logs ANY,
-    Log.event ANY,
-    
     Person.name MARKETING,
-    Person.gender MARKETING,
-    Person.email MARKETING,
     Person.gender TARGETED_MARKETING,
     Person.email MASS_MARKETING,
-
+    
+    Person.attends [self.attends->size()>2] <you attend more than two events> STATS,
+    Person.name [self.attends->size()>2] <you attend more than two events> STATS,
+    Person.subscriptions [self.attends->size()>2] <you attend more than two events> STATS,
     Person.gender ANALYTICS,
 
     Log.event FUNCTIONAL,
-
-    Person.name FUNCTIONAL,
-    Person.surname FUNCTIONAL,
-    Person.role FUNCTIONAL,
-    Person.gender FUNCTIONAL,
-    Person.email FUNCTIONAL,
-    Person.subscriptions FUNCTIONAL,
-    Person.logs FUNCTIONAL,
+    Person.attends FUNCTIONAL,
     Person.subscriptions [self.role = Role::REGULARUSER] <you are a regularuser> RECOMMEND_EVENTS,
     Person.logs RECOMMEND_EVENTS,
     Person.name CORE,

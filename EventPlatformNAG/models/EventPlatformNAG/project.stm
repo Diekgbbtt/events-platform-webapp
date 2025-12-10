@@ -98,7 +98,11 @@ default Role REGULARUSER extends VISITOR {
         update(description) [self.owner = null or self.owner = caller or (not self.managedBy.isEmpty() and self.managedBy->includes(caller))]
         update(owner) [self.owner = null and value = caller]
 
-        add(attendants) [self.owner = null or ((self.owner = caller or (not self.managedBy.isEmpty() and self.managedBy->includes(caller))))]
+        add(attendants) [self.owner = null 
+            or self.owner = caller 
+            or (not self.managedBy.isEmpty() and self.managedBy->includes(caller))
+            or (not self.invitations.isEmpty() and self.invitations->select(i|i.invitee = value and i.event = self)->size()>=1)]
+
         add(invitations) [
             ((value.event = null and value.invitedBy = null)
             or
@@ -109,7 +113,8 @@ default Role REGULARUSER extends VISITOR {
         ]
         add(managedBy) [self.owner = null or (self.owner = caller and ((not self.attendants.isEmpty() and self.attendants->includes(value)) or value = caller))]
         add(categories) [self.owner = caller or (not self.managedBy.isEmpty() and self.managedBy->includes(caller))]
-        add(requesters) [value = caller]
+        add(requesters) [value = caller
+            and (not self.invitations.isEmpty() and self.invitations->select(i|i.invitee = value and i.event = self)->isEmpty())]
         add(logs) [value.user = caller]
 
         remove(managedBy) [value <> self.owner and self.owner = caller]
@@ -140,7 +145,31 @@ default Role REGULARUSER extends VISITOR {
 
     Invite {
         create
-        
+
+        update(event) [
+            self.event = null
+            and self.invitedBy = null
+            and (value.owner = caller or value.managedBy->includes(caller))
+        ]
+
+        update(invitedBy) [
+            self.event <> null
+            and self.invitedBy = null
+            and value = caller
+            and (self.event.owner = caller or self.event.managedBy->includes(caller))
+        ]
+
+        update(invitee) [
+            self.event <> null
+            and self.invitedBy <> null
+            and self.invitedBy = caller
+            and self.invitee = null
+            and (self.event.owner = caller or self.event.managedBy->includes(caller))
+            and (self.event.requesters.isEmpty() or not self.event.requesters->includes(value))
+            and (self.event.attendants.isEmpty() or not self.event.attendants->includes(value))
+            and (self.event.invitations.isEmpty() or self.event.invitations->select(i|i.invitee = value and i.event = self.event)->isEmpty())
+        ]
+
         read [self.invitedBy = caller or self.invitee = caller or (self.event <> null and (self.event.owner = caller or self.event.managedBy->includes(caller)))]
 
         delete [
@@ -163,6 +192,8 @@ Role PREMIUMUSER extends REGULARUSER {
     Ad {}
 
     Log {}
+    
+    Invite {}
 }
 Role MODERATOR extends PREMIUMUSER {
     Person {
@@ -185,6 +216,8 @@ Role MODERATOR extends PREMIUMUSER {
     Ad {}
 
     Log {}
+        
+    Invite {}
 }
 Role ADMIN extends PREMIUMUSER {
     Person {
@@ -216,4 +249,7 @@ Role ADMIN extends PREMIUMUSER {
     Log {
         fullAccess
     }
+
+    Invite {}
+
 }

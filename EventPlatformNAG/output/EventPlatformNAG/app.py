@@ -224,13 +224,13 @@ def update_user():
 
 
 @app.route('/join', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE', 'FUNCTIONAL']))
 def join():
     return Person.join(request)
 
 
 @app.route('/leave', methods=['POST', 'GET'])
-@secure(db,P(['CORE']))
+@secure(db,P(['CORE', 'FUNCTIONAL']))
 def leave():
     return Person.leave(request)
 
@@ -280,7 +280,7 @@ def create_event():
 
 
 @app.route('/view_event', methods=['POST', 'GET'])
-@secure(db,P(['FUNCTIONAL']))
+@secure(db,P(['CORE', 'FUNCTIONAL']))
 def view_event():
     return Event.view_event(request)
 
@@ -310,7 +310,7 @@ def remove_category():
 
 
 @app.route('/promote_manager', methods=['POST', 'GET'])
-@secure(db,P(['CORE']))
+@secure(db,P(['CORE', 'FUNCTIONAL']))
 def promote_manager():
     return Event.promote_manager(request)
 
@@ -414,7 +414,7 @@ def send_invite():
 
 
 @app.route('/accept_invitation', methods=['POST', 'GET'])
-@secure(db,P(['CORE']))
+@secure(db,P(['CORE', 'FUNCTIONAL']))
 def accept_invitation():
     return Invite.accept_invitation(request)
 

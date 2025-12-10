@@ -103,7 +103,11 @@ action setInviteInvitedBy appliesTo {
 
 action setInviteInvitee appliesTo {
     principal: Person,
-    resource: Event
+    resource: Event,
+    context: {
+        invitee: Person,
+        invitedpeople: Set<Person>
+    }
 };
 
 action updateEvent appliesTo {
@@ -226,7 +230,11 @@ action promoteAttendant appliesTo {
 
 action acceptRequest appliesTo {
     principal: Person,
-    resource: Event
+    resource: Event,
+    context: {
+        invitedpeople: Set<Person>,
+        requester: Person
+    }
 };
 
 
@@ -267,3 +275,12 @@ action viewPersonalizedStats appliesTo {
     principal: Person,
     resource: Person
 };
+
+
+action addRequest appliesTo {
+    principal: Person,
+    resource: Event,
+    context: {
+        invitationsevents: Set<Event>
+    }
+}

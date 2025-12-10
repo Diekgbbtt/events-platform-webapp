@@ -1,4 +1,4 @@
-from sqlite3 import IntegrityError
+from sqlalchemy.exc import IntegrityError
 from flask import request
 from flask_user import current_user, login_required
 from model import ADMIN, db, Person, Role, Event, Category, Purpose, Ad, Consent, AnyPurpose, FunctionalPurpose, MarketingPurpose, AnalyticsPurpose, CorePurpose, RecommendEventsPurpose, TargetedMarketingPurpose, MassMarketingPurpose, Log, MODERATOR, Invite, InsightsPurpose, StatsPurpose
@@ -57,18 +57,18 @@ Your task is to define them according to the privacy requirements in the project
 
 PRIVACY_INPUT = {
     AnyPurpose: {
-        "data": [("Person", "name"), ("Person", "surname"), ("Person", "gender"), ("Person", "role"), ("Person", "email"), ("Person", "subscriptions"), ("Person", "logs"), ("Log", "event")],
+        "data": [],
         "children": {
             MarketingPurpose: {
-                "data": [("Person", "name"), ("Person", "gender"), ("Person", "email")],
+                "data": [("Person", "name")],
                 "children": {
                     TargetedMarketingPurpose: {
-                        "data": [("Category", "name"), ("Person", "gender")],
+                        "data": [("Person", "gender")],
                         "children": {},
                         "constraintDesc": ""
                     },
                     MassMarketingPurpose: {
-                        "data": [("Category", "name"), ("Person", "email")],
+                        "data": [("Person", "email")],
                         "children": {},
                         "constraintDesc": ""
                     }
@@ -76,7 +76,7 @@ PRIVACY_INPUT = {
                 "constraintDesc": ""
             },
             InsightsPurpose: {
-                "data": [("Person", "name"), ("Person", "attends"), ("Person", "subscriptions"), ("Person", "gender")],
+                "data": [],
                 "children": {
                     AnalyticsPurpose: {
                         "data": [("Person", "gender")],
@@ -92,7 +92,7 @@ PRIVACY_INPUT = {
                 "constraintDesc": ""
             },
             FunctionalPurpose: {
-                "data": [("Person", "attends"), ("Person", "logs"), ("Log", "event"), ("Person", "name"), ("Person", "surname"), ("Person", "gender"), ("Person", "role"), ("Person", "email")], # could be Person::name instead as it is what
+                "data": [("Person", "attends"), ("Log", "event")],
                 "children": {
                     RecommendEventsPurpose: {
                         "data": [("Person", "logs")],
@@ -216,7 +216,7 @@ def main():
                 event_recommendation_perm
                 and check_access_consent(current_user, "Person", "subscriptions", [RecommendEventsPurpose, FunctionalPurpose, AnyPurpose])
             )     
-        user = _serialize_user(current_user, [(["name", "surname"], [CorePurpose, FunctionalPurpose, AnyPurpose])])
+        user = _serialize_user(current_user, privacy_policies=[(["name", "surname"], [CorePurpose, FunctionalPurpose, AnyPurpose])])
         recommended = recommend_events(user) if event_recommendation_perm else []
 
     return {'user' : user, 'recommended_events': recommended}
@@ -234,10 +234,27 @@ def users():
     return {'users' : users_dto}
 
 
-def _serialize_user(user: Person, policies: list[tuple[list[str], list[str]]] = None):
+def _build_privacy_policy_map(privacy_policies):
+    policy_map: dict[str, list[str]] = {}
+    if not privacy_policies:
+        return policy_map
+    if isinstance(privacy_policies, dict):
+        for field, purposes in privacy_policies.items():
+            policy_map[field] = list(purposes or [])
+        return policy_map
+
+    for personal_data, purposes in privacy_policies:
+        for pd in personal_data or []:
+            if not pd:
+                continue
+            current = policy_map.get(pd, [])
+            policy_map[pd] = list(set(current + (purposes or [])))
+    return policy_map
+
+
+def _serialize_user(user: Person, privacy_policies: list[tuple[list[str], list[str]]] = None):
     if user is None:
         return None
-    # TODO maybe externalise to a _restricted_person_dto method that restrict attributes according to the calling method  
     user_dto = PersonDTO(user.id,
                         name=user.name,
                         surname=user.surname,
@@ -280,7 +297,7 @@ def _serialize_user(user: Person, policies: list[tuple[list[str], list[str]]] = 
         user_dto.invites = []
         return user_dto
 
-    user_dto = _serialize_user_privacy(user, user_dto, policies)
+    user_dto = _serialize_user_privacy(user, user_dto, privacy_policies)
 
     # can_read_invitations = (
     #     current_user.is_authenticated
@@ -308,21 +325,21 @@ def _serialize_user(user: Person, policies: list[tuple[list[str], list[str]]] = 
 
     return user_dto
 
-def _serialize_user_privacy(user: Person, user_dto: PersonDTO, policies: list[tuple[list[str], list[str]]] = None):
-    for personal_data, purposes in policies or []:
-        for pd in personal_data or []:
-            if not hasattr(user_dto, pd):
-                continue
-            value = getattr(user_dto, pd)
-            if value == RESTRICTED:
-                continue
-            if not check_access_consent(user, "Person", pd, purposes):
-                setattr(user_dto, pd, [] if isinstance(value, list) else RESTRICTED)
+def _serialize_user_privacy(user: Person, user_dto: PersonDTO, privacy_policies: list[tuple[list[str], list[str]]] = None):
+    policy_map = _build_privacy_policy_map(privacy_policies)
+    for pd, purposes in policy_map.items():
+        if not hasattr(user_dto, pd):
+            continue
+        value = getattr(user_dto, pd)
+        if value == RESTRICTED:
+            continue
+        if not check_access_consent(user, "Person", pd, purposes):
+            setattr(user_dto, pd, [] if isinstance(value, list) else RESTRICTED)
     return user_dto
 
 def user(id):
     user = Person.query.get(id)
-    user_dto = _serialize_user(user, [(["name", "surname", "gender", "role", "email", "subscriptions"], [CorePurpose, FunctionalPurpose, AnyPurpose]), (["attends"], [FunctionalPurpose, AnyPurpose])])
+    user_dto = _serialize_user(user, privacy_policies=[(["name", "surname", "gender", "role", "email", "subscriptions"], [CorePurpose, FunctionalPurpose, AnyPurpose])])
     roles_dto = RoleDTO.copies(Role.query.all())
     return {'user' : user_dto, 'roles' : roles_dto}
 
@@ -334,7 +351,7 @@ def profile():
     check_access_consent(current_user, "Person", "gender", [TargetedMarketingPurpose, MarketingPurpose, AnyPurpose])
     and check_access_consent(current_user, "Person", "name", [MarketingPurpose, AnyPurpose])
     )
-    user_dto = _serialize_user(current_user, [(["attends"], [FunctionalPurpose, AnyPurpose]), (["subscriptions"], [CorePurpose, FunctionalPurpose, AnyPurpose]) ])
+    user_dto = _serialize_user(current_user, privacy_policies=[(["attends"], [FunctionalPurpose, AnyPurpose]), (["subscriptions"], [CorePurpose, FunctionalPurpose, AnyPurpose]) ])
     ad = get_personalize_ad(user_dto) if ad_permission else None
     
     return {'user': user_dto, 'ad': ad}
@@ -374,25 +391,34 @@ def update_user():
         raise se
 
 def join(id):
-    if not current_user.is_authenticated:
-        raise SecurityException(
-            msg="not authenticated users can't request to join events", page="sec_error.html"
+    try:
+        if not current_user.is_authenticated:
+            raise SecurityException(
+                msg="not authenticated users can't request to join events", page="sec_error.html"
+            )
+        event = Event.query.get(id)
+        if current_user.id in [p.id for p in event.attendants]:
+            return
+        # has_existing_invite = (
+        #     Invite.query.filter_by(event_id=event.id, invitee_id=current_user.id).first()
+        #     is not None
+        # )
+        user = Person.query.get(current_user.id)
+        user_invited_events = [serializer._entity_pointer(e.event) for e in user.invitations]
+
+        cedar.assert_allowed(
+            principal=current_user,
+            action="addRequest",
+            resource=event,
+            context={"invitationsevents": user_invited_events},
         )
-    event = Event.query.get(id)
-    if current_user.id in [p.id for p in event.attendants]:
-        return
-    existing_invite = Invite.query.filter_by( # TODO embed in a cedar policy
-        event_id=event.id, invitee_id=current_user.id
-    ).first()
-    if existing_invite:
-        raise SecurityException(
-            msg="invited users cannot request to join the same event",
-            page="sec_error.html",
-        )
-    if current_user.id not in [p.id for p in event.requesters]:
-        p = Person.query.get(current_user.id)
-        event.requesters.append(p)
-        db.session.commit()
+        if current_user.id not in [p.id for p in event.requesters]: # TODO add event attendants as well to the list
+            p = Person.query.get(current_user.id)
+            event.requesters.append(p)
+            db.session.commit()
+    except SecurityException as se:
+        db.session.rollback()
+        raise se
 
 def leave(id):
     try:
@@ -746,10 +772,20 @@ def accept_request(id,e):
             )
         user = Person.query.get(id)
         event = Event.query.get(e)
-        cedar.assert_allowed(principal=current_user, action="acceptRequest", resource=event)
+        event_invited_users = [i.invitee for i in event.invitations if i.invitee is not None]
+        cedar.assert_allowed(principal=current_user, action="acceptRequest", resource=event, context={"invitedpeople": [serializer._entity_pointer(u) for u in event_invited_users], "requester": serializer._entity_pointer(user)})
         if user not in event.attendants:
             has_consent(user, "Person", "attends", [FunctionalPurpose, AnyPurpose])
             event.attendants.append(user)
+        if user in event_invited_users:
+            for invitation in list(event.invitations):
+                if invitation.invitee_id == user.id:
+                    cedar.assert_allowed(
+                        principal=current_user,
+                        action="deleteInvite",
+                        resource=invitation,
+                    )
+                    db.session.delete(invitation)
         event.requesters.remove(user)
         db.session.commit()
         return e
@@ -927,7 +963,6 @@ def analyze(id):
         event = EventDTO.copy(Event.query.get(id))
         gender_counts = {"male": 0, "female": 0, "unknown": 0}
         for a in event.attendants:
-            # TODO maybe here check for insights purpose consent for attends, subscriptions and name
             if check_access_consent(a, "Person", "gender", [AnalyticsPurpose, AnyPurpose]):
                 gender = a.gender if a.gender in gender_counts else "unknown"
                 gender_counts[gender] += 1    
@@ -1053,9 +1088,10 @@ def personalized_stats(id):
             resource=user,
         )
         if len(user.attends) > 2:
-            user_dto = _serialize_user(user, [(["name", "subscriptions", "attends"], [StatsPurpose, InsightsPurpose, AnyPurpose])])
+            user_dto = _serialize_user(user, privacy_policies=[(["subscriptions", "attends"], [StatsPurpose, InsightsPurpose, AnyPurpose])])
         else:
-            # TODO coutnercheck here if I have to check for FunctionalPurpose
+            user.attends = []
+            user.subscriptions = []
             user_dto = _serialize_user(user)
         return {'user' : user_dto}
     except SecurityException as se:
@@ -1070,7 +1106,6 @@ def send_invite(id,e):
         user = Person.query.get(id)
         event = Event.query.get(e)
 
-        # TODO redundant as only checks for regularuser role == authentication but ok for now to be removed
         cedar.assert_allowed(
             principal=current_user,
             action="createInvite",
@@ -1083,23 +1118,23 @@ def send_invite(id,e):
             invite.event = event
         if check_cedar_permission(_caller=current_user, _action="setInviteInvitedBy", _resource=event):
             invite.invitedBy = current_user
-
-        if check_cedar_permission(_caller=current_user, _action="setInviteInvitee", _resource=event):
-            if not (user in [event.attendants + event.requesters]) and Invite.query.filter_by(event_id=event.id, invitee_id=user.id).first() == None:
-                invite.invitee = user   
-            else:
-                raise SecurityException(
-                    msg="users already inviting/requesting/attending cannot be invited",
-                    page='sec_error.html'
-                )
-
-        # TODO can commit empty invites due to nullable=false in the model -> do not raise an exception if logged in but don't actually persist the object if not manager and other contraints aren't respected
+        
+        inv_users = [
+            serializer._entity_pointer(subject=i.invitee)
+            for i in event.invitations
+            if i.invitee is not None
+        ]
+        
+        if check_cedar_permission(_caller=current_user, _action="setInviteInvitee", _resource=event, context={"invitee": serializer._entity_pointer(subject=user), "invitedpeople": inv_users}):
+            invite.invitee = user
+        # Try to persist; if FK constraints fail (e.g., empty invite), roll back and return None
         try:
             db.session.add(invite)
-            db.session.flush()
             db.session.commit()
-        except IntegrityError as ie:
-            pass  
+            return
+        except IntegrityError:
+            db.session.rollback()
+            return
     except SecurityException as se:
         db.session.rollback()
         raise se
@@ -1158,15 +1193,8 @@ def decline_invitation(id):
         db.session.rollback()
         raise se
 
-# This is a sample of how one can extend the functionality of the manage_event
-# using the get_invite_candidates function.
-# def manage_event(id):
-#     event = EventDTO.copy(Event.query.get(id))
-#     return {'event' : event, 'users' : get_invite_candidates(event)}
-
 def get_invite_candidates(event):
     all_users = Person.query.all()
-    non_consenting_attendees
     invitees = list([i.invitee.id for i in event.invitations])
     attendants = list([a.id for a in event.attendants])
     requesters = list([r.id for r in event.requesters])
