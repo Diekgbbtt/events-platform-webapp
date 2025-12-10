@@ -222,6 +222,10 @@ def main():
     return {'user' : user, 'recommended_events': recommended}
 
 def users():
+    if not current_user.is_authenticated:
+        raise SecurityException(
+            msg="not authenticated users can't read users core information", page="sec_error.html"
+        )
     users = Person.query.all()
     users_dto = []
     for u in users:
@@ -502,7 +506,6 @@ def _serialize_event(event):
         if event.owner.id == current_user.id or any(current_user.id == manager.id for manager in event.managedBy):
             accessible_requests = event.requesters
         else:
-            # cedar policy 'principal in Role::"ADMIN"'
             for r in event.requesters:
                 if check_cedar_permission(
                     _caller=current_user,
@@ -727,7 +730,7 @@ def remove_attendee(id,e):
         user = Person.query.get(id)
         event = Event.query.get(e)
         cedar.assert_allowed(principal=current_user, action="removeAttendant", resource=event, context={"removedAttendant" : serializer._entity_pointer(subject=user)})
-        has_consent(user, "Person", "attends", [FunctionalPurpose, AnyPurpose])
+        # this method has CORE PURPOSE - has_consent(user, "Person", "attends", [FunctionalPurpose, AnyPurpose])
         if user in event.attendants:
             event.attendants.remove(user)
             db.session.commit()
@@ -1163,8 +1166,9 @@ def decline_invitation(id):
 
 def get_invite_candidates(event):
     all_users = Person.query.all()
+    non_consenting_attendees
     invitees = list([i.invitee.id for i in event.invitations])
-    attendants = [a.id for a in event.attendants if check_access_consent(a, "Person", "attends", [FunctionalPurpose, AnyPurpose])]
+    attendants = list([a.id for a in event.attendants])
     requesters = list([r.id for r in event.requesters])
     users = []
     for u in all_users:

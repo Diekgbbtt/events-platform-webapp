@@ -7,7 +7,6 @@ Personal data {
     Person.email,
     Person.subscriptions,
     Person.logs,
-    Person.attends,
 
     Log.event
 }
@@ -19,26 +18,25 @@ Purposes {
     FUNCTIONAL includes RECOMMEND_EVENTS CORE,
     
     ANALYTICS,
-    STATS,
-    INSIGHTS includes STATS ANALYTICS,
     
     TARGETED_MARKETING,
     MASS_MARKETING,
     MARKETING includes TARGETED_MARKETING MASS_MARKETING,
     
     
-    ANY includes FUNCTIONAL INSIGHTS MARKETING
+    ANY includes FUNCTIONAL ANALYTICS MARKETING
        
 }
 
 Actual purposes {
+
     
     main CORE,
 
     Person.user CORE,
     Person.users CORE,
     Person.leave CORE,
-    Person.profile FUNCTIONAL,
+    Person.profile CORE,
     Person.update_user CORE,
     Person.subscribe CORE,
     Person.unsubscribe CORE,
@@ -46,7 +44,6 @@ Actual purposes {
     Person.send_advertisement_to_user MASS_MARKETING,
     Person.add_moderator CORE,
     Person.remove_moderator CORE,
-    Person.personalized_stats STATS,
 
     Event.events CORE,
     Event.view_event FUNCTIONAL,
@@ -65,7 +62,7 @@ Actual purposes {
 
     Category.categories CORE,
     Category.create_category CORE,
-    Category.view_category FUNCTIONAL,
+    Category.view_category CORE,
     Category.edit_category CORE,
     Category.update_category CORE,
     Category.get_candidates CORE,
@@ -73,12 +70,8 @@ Actual purposes {
     Log.logs FUNCTIONAL,
 
     Ad.get_personalize_ad TARGETED_MARKETING,
-    Ad.remove_ad FUNCTIONAL,
-    Ad.create_ad FUNCTIONAL,
-
-    Invite.send_invite CORE,
-    Invite.accept_invitation CORE,
-    Invite.decline_invitation CORE
+    Ad.remove_ad CORE,
+    Ad.create_ad CORE
 
 }
 
@@ -91,29 +84,18 @@ Declared purposes {
     Person.email ANY,
     Person.subscriptions ANY,
     Person.logs ANY,
-    Person.attends ANY,
     Log.event ANY,
     
-
     Person.name MARKETING,
     Person.gender MARKETING,
     Person.email MARKETING,
     Person.gender TARGETED_MARKETING,
     Person.email MASS_MARKETING,
-    
 
-    Person.attends INSIGHTS,
-    Person.name INSIGHTS,
-    Person.subscriptions INSIGHTS,
-    Person.gender INSIGHTS,
-    Person.attends [self.attends->size()>2] <you attend more than two events> STATS,
-    Person.name [self.attends->size()>2] <you attend more than two events> STATS,
-    Person.subscriptions [self.attends->size()>2] <you attend more than two events> STATS,
     Person.gender ANALYTICS,
 
-
     Log.event FUNCTIONAL,
-    Person.attends FUNCTIONAL,
+
     Person.name FUNCTIONAL,
     Person.surname FUNCTIONAL,
     Person.role FUNCTIONAL,
