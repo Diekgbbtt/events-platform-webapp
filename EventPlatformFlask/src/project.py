@@ -412,7 +412,9 @@ def join(id):
             resource=event,
             context={"invitationsevents": user_invited_events},
         )
-        if current_user.id not in [p.id for p in event.requesters]: # TODO add event attendants as well to the list
+        existing_request_ids = {p.id for p in event.requesters}
+        existing_request_ids.update(p.id for p in event.attendants)
+        if current_user.id not in existing_request_ids:
             p = Person.query.get(current_user.id)
             event.requesters.append(p)
             db.session.commit()
